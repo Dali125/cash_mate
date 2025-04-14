@@ -37,7 +37,7 @@ class _InventoryPageState extends State<InventoryPage> {
               child: Container(
                 height: 60,
                 child: SearchBar(
-                  elevation: MaterialStateProperty.all(2),
+                  elevation: WidgetStateProperty.all(2),
                   backgroundColor: MaterialStateProperty.all(onBluePrimary),
                   leading: Icon(Icons.search, color: Colors.blueGrey),
                   hintText: 'Search inventory',
@@ -154,7 +154,7 @@ class _InventoryPageState extends State<InventoryPage> {
                                                     .deleteInventory(
                                                         itemData['id'] as int);
                                                 // Handle delete action
-                                                Navigator.pop(context);
+                                                Get.back();
                                                 setState(() {});
                                               },
                                             ),

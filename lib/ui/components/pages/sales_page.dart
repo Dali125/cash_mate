@@ -222,14 +222,14 @@ class _SalesPageState extends State<SalesPage> {
                             total: cartController.total.value,
                             itemsSold: cartController.cart,
                           );
-                          await db.addSale(item);
-                          Get.snackbar(
-                              'Success', 'Inventory added successfully',
-                              backgroundColor: Colors.green,
-                              colorText: Colors.white);
+                          // await db.addSale(item);
+                          // Get.snackbar(
+                          //     'Success', 'Inventory added successfully',
+                          //     backgroundColor: Colors.green,
+                          //     colorText: Colors.white);
 
-                          cartController.clearCart();
-                          Get.toNamed('/transaction_complete');
+                          // cartController.clearCart();
+                          Get.toNamed('/payment_page', arguments: item);
                         },
                       ),
                     ),

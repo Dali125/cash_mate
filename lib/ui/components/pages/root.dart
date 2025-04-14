@@ -4,11 +4,13 @@ import 'package:cash_app/db/config.dart';
 import 'package:cash_app/services/device_properties.dart';
 import 'package:cash_app/ui/components/pages/add_inventory.dart';
 import 'package:cash_app/ui/components/pages/inventory_page.dart';
+import 'package:cash_app/ui/components/pages/nkongole_page.dart';
 import 'package:cash_app/ui/components/pages/sales_page.dart';
 import 'package:cash_app/ui/components/pages/splash_screen/sales_history_page.dart';
 import 'package:cash_app/ui/components/pages/tablet/inventory_tablet.dart';
 import 'package:cash_app/ui/components/pages/tablet/sales_page_tablet.dart';
 import 'package:cash_app/ui/components/pages/tablet/tablet_home.dart';
+import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -83,6 +85,7 @@ class _RootPageState extends State<RootPage> {
               0 => HomePage(),
               1 => InventoryPage(),
               2 => SalesHistoryPage(),
+              3 => NkongolePage(),
               _ => HomePage(),
             },
       floatingActionButton: pc.currentPage.value == 0
@@ -125,7 +128,15 @@ class _RootPageState extends State<RootPage> {
                   icon: Icon(Icons.history),
                   label: 'Sales History',
                 ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.monetization_on),
+                  label: 'Nkongole',
+                ),
               ],
+              selectedItemColor: bluePrimary,
+              unselectedItemColor: Colors.grey,
+              type: BottomNavigationBarType.shifting,
+              showUnselectedLabels: true,
             ),
     );
   }

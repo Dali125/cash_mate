@@ -6,10 +6,7 @@ Future<void> getPermissions() async {
   try {
     final status = await Permission.storage.request();
     if (status.isGranted) {
-      final dir = await getTemporaryDirectory();
 
-      Hive.init(dir.path);
-      // Permission granted, proceed with file operations
     } else {
       // Permission denied, handle accordingly
     }

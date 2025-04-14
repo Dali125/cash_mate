@@ -3,6 +3,7 @@ import 'dart:core';
 
 import 'package:cash_app/controllers/page_controller.dart';
 import 'package:cash_app/db/config.dart';
+import 'package:cash_app/services/device_properties.dart';
 
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
@@ -59,10 +60,7 @@ class _HomePageState extends State<HomePage> {
               } else {
                 final salesSummary = snapshot.data!;
                 String salesSummaryString = jsonEncode(salesSummary);
-                print(
-                    ".........................................................................");
-                print(salesSummary['recent_sales']);
-                print(salesSummaryString);
+
                 return Padding(
                   padding: const EdgeInsets.all(8.0),
                   child: SingleChildScrollView(
@@ -70,28 +68,58 @@ class _HomePageState extends State<HomePage> {
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        buildSalesCard(context,
-                            title: 'Total Items Sold',
-                            data: salesSummary['total_items_sold'].toString(),
-                            fontSize: 30,
-                            trailing: Icon(Icons.money)),
-                        SizedBox(
-                          height: 10,
+
+                        Material(
+                          shadowColor: Colors.black12,
+                          elevation: 200,
+                          child: Container(
+                            width: DeviceProperties().getWidth(context),
+                            height: 200,
+                            color: Colors.grey,
+                          ),
                         ),
-                        buildSalesCard(context,
-                            backgroundColor:
-                                ColorScheme.fromSeed(seedColor: bluePrimary)
-                                    .onSecondary,
-                            title: 'Total Revenue',
-                            data: salesSummary['total_sales'].toString() ==
-                                    'null'
-                                ? '0.0'
-                                : 'K ${salesSummary['total_sales'].toString()}',
-                            fontSize: 30,
-                            trailing: Icon(Icons.money)),
                         SizedBox(
-                          height: 10,
+                          height: 20
                         ),
+
+
+                        Container(
+                          width: DeviceProperties().getWidth(context),
+                          height: DeviceProperties().getHeight(context) /4,
+
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+
+                            children: [
+
+                              buildSalesCard(context,
+                                  title: 'Total Items Sold',
+                                  data: salesSummary['total_items_sold'].toString(),
+                                  fontSize: 30,
+                                  trailing: Icon(Icons.money)),
+
+                              buildSalesCard(context,
+                                  backgroundColor:
+                                  ColorScheme.fromSeed(seedColor: bluePrimary)
+                                      .onSecondary,
+                                  title: 'Total Revenue',
+                                  data: salesSummary['total_sales'].toString() ==
+                                      'null'
+                                      ? '0.0'
+                                      : 'K ${salesSummary['total_sales'].toString()}',
+                                  fontSize: 30,
+                                  trailing: Icon(Icons.money)),
+
+                            ],
+                          ),
+                            
+
+                        ),
+
+
+
+
+
                         SizedBox(
                           height: 10,
                         ),

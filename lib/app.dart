@@ -2,6 +2,7 @@ import 'package:cash_app/ui/components/pages/add_inventory.dart';
 import 'package:cash_app/ui/components/pages/edit_inventory.dart';
 import 'package:cash_app/ui/components/pages/inventory_item_overview.dart';
 import 'package:cash_app/ui/components/pages/inventory_page.dart';
+import 'package:cash_app/ui/components/pages/payments/payment_page.dart';
 import 'package:cash_app/ui/components/pages/root.dart';
 import 'package:cash_app/ui/components/pages/sales_page.dart';
 import 'package:cash_app/ui/components/pages/tablet/inventory_tablet.dart';
@@ -34,6 +35,7 @@ class MyApp extends StatelessWidget {
         '/inventory-tablet': (context) => const InventoryPageTablet(),
         '/add-inventory-tablet': (context) => const AddInventoryPage(),
         '/transaction_complete': (context) => TransactionCompletePage(),
+        '/payment_page': (context) => PaymentPage(),
       },
     );
   }

@@ -10,7 +10,7 @@ Widget buildSalesCard(
   required String data,
   required double fontSize,
   required Widget trailing,
-  double heightFactor = 7, // Default height factor
+  double heightFactor = 3, // Default height factor
   Color backgroundColor = Colors.white, // Default background color
 }) {
   return Material(
@@ -18,7 +18,8 @@ Widget buildSalesCard(
     borderOnForeground: true,
     borderRadius: BorderRadius.circular(10),
     child: Container(
-      height: DeviceProperties().getHeight(context) / heightFactor,
+      width: DeviceProperties().getWidth(context) / 2.2,
+      height: DeviceProperties().getHeight(context) / 4,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
