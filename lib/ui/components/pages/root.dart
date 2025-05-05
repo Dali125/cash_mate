@@ -10,11 +10,13 @@ import 'package:cash_app/ui/components/pages/splash_screen/sales_history_page.da
 import 'package:cash_app/ui/components/pages/tablet/inventory_tablet.dart';
 import 'package:cash_app/ui/components/pages/tablet/sales_page_tablet.dart';
 import 'package:cash_app/ui/components/pages/tablet/tablet_home.dart';
+import 'package:cash_app/ui/components/pages/tablet/tablet_root.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import 'home_page.dart';
+import 'settings/settings_page.dart';
 
 class RootPage extends StatefulWidget {
   const RootPage({super.key});
@@ -33,59 +35,20 @@ class _RootPageState extends State<RootPage> {
   int currentPage = 0;
   @override
   Widget build(BuildContext context) {
-    Get.put(Config());
+   
     Get.put(MediaController());
+
+    
     final pc = Get.find<PageControllers>();
     return Scaffold(
-      body: DeviceProperties().isTablet(context)
-          ? SafeArea(
-              child: Row(
-                children: [
-                  NavigationRail(
-                    leading: Material(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Image.asset(
-                        'assets/splash-android.png',
-                        height: 80,
-                        width: 80,
-                      ),
-                    ),
-                    destinations: [
-                      NavigationRailDestination(
-                        icon: Icon(Icons.home),
-                        label: Text('Home'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.inventory),
-                        label: Text('Inventory'),
-                      ),
-                      NavigationRailDestination(
-                        icon: Icon(Icons.school),
-                        label: Text('School'),
-                      ),
-                    ],
-                    selectedIndex: pc.currentPage.value,
-                    onDestinationSelected: (index) {
-                      pc.changePage(index);
-                      setState(() {});
-                    },
-                  ),
-                  Expanded(
-                    child: switch (pc.currentPage.value) {
-                      0 => HomePageTablet(),
-                      1 => InventoryPageTablet(),
-                      2 => SalesHistoryPage(),
-                      _ => HomePageTablet(),
-                    },
-                  ),
-                ],
-              ),
-            )
+      body: DeviceProperties().isDesktop(context)
+          ? InventoryPageTablet()
           : switch (pc.currentPage.value) {
               0 => HomePage(),
               1 => InventoryPage(),
               2 => SalesHistoryPage(),
-              3 => NkongolePage(),
+           
+              3 => SettingsPage(),
               _ => HomePage(),
             },
       floatingActionButton: pc.currentPage.value == 0
@@ -128,9 +91,10 @@ class _RootPageState extends State<RootPage> {
                   icon: Icon(Icons.history),
                   label: 'Sales History',
                 ),
+              
                 BottomNavigationBarItem(
-                  icon: Icon(Icons.monetization_on),
-                  label: 'Nkongole',
+                  icon: Icon(Icons.settings),
+                  label: 'Settings',
                 ),
               ],
               selectedItemColor: bluePrimary,
@@ -138,6 +102,7 @@ class _RootPageState extends State<RootPage> {
               type: BottomNavigationBarType.shifting,
               showUnselectedLabels: true,
             ),
+   
     );
   }
 }

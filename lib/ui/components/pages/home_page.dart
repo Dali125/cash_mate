@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:core';
+import 'dart:math';
 
 import 'package:cash_app/controllers/page_controller.dart';
 import 'package:cash_app/db/config.dart';
@@ -8,9 +9,8 @@ import 'package:cash_app/services/device_properties.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 
-import '../saleCard.dart';
+
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -25,8 +25,10 @@ class _HomePageState extends State<HomePage> {
       Future.value(Map<String, dynamic>());
   Config db = Get.find<Config>();
   Future<Map<String, dynamic>> getSalesSummary() async {
+    await db.updateNumberOfLogins();
     return await db.getSalesSummary();
   }
+  List colors = [Colors.lightBlueAccent, Colors.red];
 
   @override
   void initState() {
@@ -35,117 +37,149 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final cardWidth = (screenWidth / 2) - 24; // 2 cards per row with padding
+   
+
     return Scaffold(
-        backgroundColor: Color.fromRGBO(216, 216, 251, 0.10196078431372549),
-        appBar: AppBar(
-          title: Text(
-            "CashMate",
-            style: TextStyle(
-              color: bluePrimary,
-              fontWeight: FontWeight.bold,
-              fontSize: 30,
-            ),
+      backgroundColor: const Color.fromRGBO(238, 238, 230, 0.4),
+      appBar: AppBar(
+        title: Text(
+          "CashMate",
+          style: TextStyle(
+            color: bluePrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 30,
           ),
         ),
-        body: FutureBuilder(
-            future: getSalesSummary(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              } else if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              } else if (snapshot.data == null) {
-                return Center(child: Text('No sales data available'));
-              } else {
-                final salesSummary = snapshot.data!;
-                String salesSummaryString = jsonEncode(salesSummary);
+      ),
+      body: FutureBuilder(
+        future: getSalesSummary(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else if (snapshot.data == null) {
+            return const Center(child: Text('No sales data available'));
+          } else {
+            final salesSummary = snapshot.data!;
+            String salesSummaryString = jsonEncode(salesSummary);
 
-                return Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            return Padding(
+              padding: const EdgeInsets.all(15.0),
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
                       children: [
-
-                        Material(
-                          shadowColor: Colors.black12,
-                          elevation: 200,
-                          child: Container(
-                            width: DeviceProperties().getWidth(context),
-                            height: 200,
-                            color: Colors.grey,
-                          ),
-                        ),
-                        SizedBox(
-                          height: 20
-                        ),
-
-
-                        Container(
-                          width: DeviceProperties().getWidth(context),
-                          height: DeviceProperties().getHeight(context) /4,
-
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-
-                            children: [
-
-                              buildSalesCard(context,
-                                  title: 'Total Items Sold',
-                                  data: salesSummary['total_items_sold'].toString(),
-                                  fontSize: 30,
-                                  trailing: Icon(Icons.money)),
-
-                              buildSalesCard(context,
-                                  backgroundColor:
-                                  ColorScheme.fromSeed(seedColor: bluePrimary)
-                                      .onSecondary,
-                                  title: 'Total Revenue',
-                                  data: salesSummary['total_sales'].toString() ==
-                                      'null'
-                                      ? '0.0'
-                                      : 'K ${salesSummary['total_sales'].toString()}',
-                                  fontSize: 30,
-                                  trailing: Icon(Icons.money)),
-
-                            ],
-                          ),
-                            
-
-                        ),
-
-
-
-
-
-                        SizedBox(
-                          height: 10,
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Text(
-                              "Recent Transactions",
-                              style: TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                        SizedBox(
-                          height: 20,
-                        ),
-                        buildSalesTable(salesSummaryString),
+                        summaryCard(cardWidth, salesSummary["sales_today"].toString(), "Sales Made Today", Icon(Icons.money)),
+                        summaryCard(cardWidth, "K ${salesSummary["today_revenue"]}" , "Todays Revenue", Icon(Icons.money)),
+                        
+                        summaryCard(cardWidth, salesSummary["alltime_sales"].toString(), "Alltime Sales", Icon(Icons.money)),
+                        summaryCard(cardWidth, "K ${salesSummary["total_sales"]}", "Alltime Revenue", Icon(Icons.money)),
                       ],
                     ),
-                  ),
-                );
-              }
-            }));
+                    const SizedBox(height: 20),
+
+                    const SizedBox(height: 20),
+
+                    Material(
+                      elevation: 2,
+                      child: Container(
+                        width: DeviceProperties().getWidth(context),
+                        height: DeviceProperties().getHeight(context)/ 3,
+                    
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                    
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    "Recent Transactions",
+                                    style: TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700,
+                                      color: bluePrimary,
+                                    ),
+                    
+                                  ),
+                                  TextButton(onPressed: (){}, child: Text("More"))
+                                ],
+                              )
+                            ),
+                            Expanded(child: buildSalesTable(salesSummaryString)),
+                    
+                    
+                          ],
+                        ),
+                      ),
+                    ),
+
+
+
+                  ],
+                ),
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
+  Widget summaryCard(double width, String value, String label, Icon? icon) {
+    List<int> numbers = [0,1,2];
+    List color = [Colors.red, Colors.greenAccent, Colors.purpleAccent];
+    Random random = Random();
+
+    int randomNumber = numbers[random.nextInt(numbers.length)];
+    return Material(
+      elevation: 2,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: width,
+        height: 160,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+          color: Colors.white,
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(11.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 40,
+                width: 40,
+                child: Center(
+                  child: icon,
+                ),
+
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(100),
+                  color: color[randomNumber]
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(label, style: TextStyle(fontWeight: FontWeight.w200, fontSize: 14)),
+              Text(value, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+              Text(label, style: TextStyle(fontWeight: FontWeight.w400, fontSize: 14)),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget buildSalesTable(String salesSummaryString) {
@@ -159,7 +193,7 @@ class _HomePageState extends State<HomePage> {
       );
     } else {
       return Table(
-        border: TableBorder.all(color: Colors.black),
+
         columnWidths: {
           0: FlexColumnWidth(2),
           1: FlexColumnWidth(3),
@@ -171,13 +205,13 @@ class _HomePageState extends State<HomePage> {
           TableRow(
             decoration: BoxDecoration(
               color:
-                  ColorScheme.fromSeed(seedColor: Colors.blue).primaryContainer,
+                  Colors.blueGrey,
             ),
             children: [
               tableHeader("Invoice ID"),
               tableHeader("Date"),
               tableHeader("Amount"),
-              tableHeader("Actions"),
+
             ],
           ),
           // Data Rows
@@ -186,17 +220,7 @@ class _HomePageState extends State<HomePage> {
               tableCell(record["id"].toString()),
               tableCell(record["date"]),
               tableCell("K${record["amount"]}"),
-              TableCell(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4.0),
-                  child: IconButton(
-                    icon: Icon(Icons.remove_red_eye, color: Colors.blue),
-                    onPressed: () {
-                      // Action when view button is pressed
-                    },
-                  ),
-                ),
-              ),
+
             ]),
         ],
       );

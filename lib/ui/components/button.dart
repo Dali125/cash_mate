@@ -24,7 +24,9 @@ class Button extends StatelessWidget {
           height: height,
           width: DeviceProperties().getWidth(context),
           color: color,
+
           child: Center(
+
             child: Text(
               text,
               style: const TextStyle(

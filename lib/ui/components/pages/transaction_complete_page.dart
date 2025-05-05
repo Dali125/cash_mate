@@ -1,4 +1,5 @@
 import 'package:cash_app/controllers/payment_controller.dart';
+import 'package:cash_app/db/config.dart';
 import 'package:cash_app/models/cart_item.dart';
 import 'package:cash_app/models/sales_model.dart';
 import 'package:cash_app/services/device_properties.dart';
@@ -13,11 +14,13 @@ class TransactionCompletePage extends StatelessWidget {
     Get.put(PaymentController());
 
     PaymentController pc = Get.find<PaymentController>();
+    Config db = Get.find<Config>();
+    
 
 
     final args = Get.arguments;
     print(args["amount paid"]);
-    SalesModel items = SalesModel(date:  args["sales"].date,total:  args["sales"].total, itemsSold:args["sales"].itemsSold   );
+    SalesModel items = SalesModel(date:  args["sales"].date,total:  args["sales"].total, itemsSold:args["sales"].itemsSold, transactionType: args["transaction_type"]   );
     List<CartItem>? itemsSold = items.itemsSold;
     print(items.total);
     return Scaffold(
@@ -34,9 +37,10 @@ class TransactionCompletePage extends StatelessWidget {
                 child: ListView.builder(
                     itemCount: itemsSold?.length,
                     itemBuilder: (context, index){
+                      int total = itemsSold![index].price!.toInt() * (itemsSold[index].quantity as int);
                       return ListTile(
                         title: Text("${itemsSold?[index].name as String} x ${itemsSold?[index].quantity}"),
-                        trailing: Text("K ${itemsSold?[index].price}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),),
+                        trailing: Text("K ${total}", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),),
                       );
                     }),
               ),
@@ -59,10 +63,14 @@ class TransactionCompletePage extends StatelessWidget {
                 padding: const EdgeInsets.all(8.0),
                 child: Button(
                   width: DeviceProperties().getWidth(context),
-                  height: 100,
+                  height: 50,
                   color: bluePrimary,
                   text: "Record Purchase",
                   onPressed: (){
+
+                    db.addSale(items);
+                    Get.snackbar("Success", "Purchase recorded successfully", backgroundColor: Colors.green, colorText: Colors.white, duration: Duration(seconds: 2), snackPosition: SnackPosition.BOTTOM);
+                    Get.offAllNamed("/");
 
                   },
                 ),

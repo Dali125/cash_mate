@@ -71,26 +71,25 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                 icon: Icons.numbers,
                 keyboardType: TextInputType.number,
               ),
-              ImagePickerWidget(mc: mc, imagePath: imagePath),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Text(
-                  'Description',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                       ImagePickerWidget(mc: mc, imagePath: imagePath),
+                       Text('Choose From Gallery')
+                    ],
+                  )
+
+               , 
+      
+                ],
               ),
-              TextField(
-                controller: imagePath,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Add item description',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: blueSecondary),
-                  ),
-                ),
-              ),
+             
+
+            
+            
+              
               SizedBox(height: 20),
               Button(
                 width: DeviceProperties().getWidth(context),

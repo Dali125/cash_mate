@@ -19,10 +19,13 @@ class _InventoryPageTabletState extends State<InventoryPageTablet> {
   final TextEditingController _searchController = TextEditingController();
   final double _cardWidth = 300; // Fixed width for grid items
 
+
+
   @override
   Widget build(BuildContext context) {
     final inventoryDB = Get.find<Config>();
     inventoryDB.initDatabase();
+
 
     return Scaffold(
       appBar: AppBar(
@@ -95,6 +98,7 @@ class _InventoryPageTabletState extends State<InventoryPageTablet> {
             FutureBuilder(
               future: inventoryDB.getInventory(),
               builder: (context, snapshot) {
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {
@@ -103,6 +107,7 @@ class _InventoryPageTabletState extends State<InventoryPageTablet> {
                   return Center(child: Text('No inventory items available'));
                 } else {
                   final inventory = snapshot.data!;
+
                   return GridView.builder(
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: _calculateCrossAxisCount(context),

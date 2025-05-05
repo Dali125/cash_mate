@@ -59,13 +59,23 @@ class SalesHistoryPage extends StatelessWidget {
                       'Invoice ID: ${sale['id']}',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    subtitle: Text(
-                      'Date: ${sale['date']}',
-                      style: const TextStyle(fontSize: 14, color: Colors.grey),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Date: ${{ DateTime.parse( sale['date']).toLocal().toString()}}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                        Text(
+                          'Transaction Type: ${sale['transaction_type'] ?? 'N/A'}',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ],
                     ),
                     trailing: const Icon(Icons.arrow_forward_ios, size: 18),
                     onTap: () {
                       // Add navigation to a detailed sale page if necessary
+                      Get.toNamed("/sales-history-detail", arguments: sale);
                     },
                   ),
                 );

@@ -14,10 +14,14 @@ class SalesModel extends HiveObject {
   @HiveField(2)
   List<CartItem>? itemsSold;
 
+  @HiveField(3)
+  String? transactionType;
+
   SalesModel({
     this.date,
     this.total,
     this.itemsSold,
+    this.transactionType,
   });
 
   Map<String, dynamic> toJson() {
@@ -25,6 +29,7 @@ class SalesModel extends HiveObject {
       'date': date,
       'total': total,
       'itemsSold': itemsSold,
+      'transactionType': transactionType,
     };
   }
 
@@ -33,6 +38,7 @@ class SalesModel extends HiveObject {
       date: json['date'],
       total: json['total'],
       itemsSold: json['itemsSold'],
+      transactionType: json['transactionType'],
     );
   }
 }

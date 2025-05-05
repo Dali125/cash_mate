@@ -150,47 +150,75 @@ class _SalesPageState extends State<SalesPage> {
               builder: (context, controller) {
                 return Material(
                   elevation: 20,
-                  shadowColor: bluePrimary,
+                  color: Colors.white,
+                  shadowColor: Colors.black,
                   borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: Colors.white,
-                    ),
-                    child: Obx(
-                      () => ListView.builder(
-                        controller: controller,
-                        itemCount: cartController.cart.length,
-                        itemBuilder: (context, index) {
-                          return ListTile(
-                            title: Text(
-                                cartController.cart[index].name.toString()),
-                            subtitle:
-                                Text("K ${cartController.cart[index].price}"),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                    icon: Icon(Icons.remove),
-                                    onPressed: () {
-                                      cartController.decrementQuantity(
-                                          index,
-                                          cartController.cart[index].quantity
-                                              as int);
-                                      print(stockQuantities[index]);
-                                    }),
-                                Text(cartController.cart[index].quantity
-                                    .toString()),
-                                IconButton(
-                                  icon: Icon(Icons.add),
-                                  onPressed: () =>
-                                      cartController.incrementQuantity(index),
-                                ),
-                              ],
+                  child: SingleChildScrollView(
+                    controller: controller,
+                    child: Column(
+                      
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: Text("Sales Cart", 
+                              style: TextStyle(
+                                  fontSize: 25,
+                                  fontWeight: FontWeight.bold,
+                                  color: bluePrimary)),
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          width: DeviceProperties().getWidth(context),
+                          height: DeviceProperties().getHeight(context),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(10),
+                            color: Colors.white,
+                            
+                          ),
+                          child: Obx(
+                            () => ListView.builder(
+                              controller: controller,
+                              itemCount: cartController.cart.length,
+                              itemBuilder: (context, index) {
+                                if (cartController.cart.length == 0) {
+                                  return const Center(
+                                      child: Text('No items in cart'));
+                                }else{
+                                
+                                return ListTile(
+                                  title: Text(
+                                      cartController.cart[index].name.toString()),
+                                  subtitle:
+                                      Text("K ${cartController.cart[index].price}"),
+                                  trailing: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      IconButton(
+                                          icon: Icon(Icons.remove),
+                                          onPressed: () {
+                                            cartController.decrementQuantity(
+                                                index,
+                                                cartController.cart[index].quantity
+                                                    as int);
+                                            print(stockQuantities[index]);
+                                          }),
+                                      Text(cartController.cart[index].quantity
+                                          .toString()),
+                                      IconButton(
+                                        icon: Icon(Icons.add),
+                                        onPressed: () =>
+                                            cartController.incrementQuantity(index),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }},
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -221,14 +249,9 @@ class _SalesPageState extends State<SalesPage> {
                             date: DateTime.now().toString(),
                             total: cartController.total.value,
                             itemsSold: cartController.cart,
+                            
                           );
-                          // await db.addSale(item);
-                          // Get.snackbar(
-                          //     'Success', 'Inventory added successfully',
-                          //     backgroundColor: Colors.green,
-                          //     colorText: Colors.white);
-
-                          // cartController.clearCart();
+                          cartController.total.value == 0.0 ? Get.snackbar('Error', 'No items in cart') :
                           Get.toNamed('/payment_page', arguments: item);
                         },
                       ),
