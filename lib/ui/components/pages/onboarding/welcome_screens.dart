@@ -11,19 +11,15 @@ class WelcomeScreens extends StatefulWidget {
 class _WelcomeScreensState extends State<WelcomeScreens> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      
-
-      body:  OnboardingExample(),
+    return const Scaffold(
+      body: OnboardingExample(),
     );
   }
 }
 
-
-
 final pages = [
   const PageData(
-    image_url : "assets/screen_1.png",
+    image_url: "assets/screen_1.png",
     icon: Icons.bubble_chart,
     title: "Welcome to \nCashMate",
     body: 'Track sales, manage stock, and grow your business—all in one easy-to-use app.',
@@ -31,22 +27,25 @@ final pages = [
     textColor: Colors.white,
   ),
   const PageData(
-      image_url : "assets/screen_2.png",
+    image_url: "assets/screen_2.png",
     icon: Icons.format_size,
-    title: "Track sales, manage stock, and grow your business.",
+    title: "Inventory & Sales",
+    body: 'Effortlessly record sales and monitor inventory levels in real time.',
     textColor: Colors.white,
     bgColor: Color(0xFFFDBFDD),
   ),
   const PageData(
-      image_url : "assets/screen_3.png",
+    image_url: "assets/screen_3.png",
     icon: Icons.hdr_weak,
-    title: "Send receipts via SMS or email. \nSave time, money, and the environment.",
+    title: "Smart Insights",
+    body: 'Analyze performance with simple charts to grow faster.',
     bgColor: Color(0xFFFFFFFF),
   ),
-   const PageData(
-      image_url : "assets/screen_3.png",
-    icon: Icons.hdr_weak,
-    title: "Send receipts via SMS or email. \nSave time, money, and the environment.",
+  const PageData(
+    image_url: "assets/screen_3.png",
+    icon: Icons.receipt_long,
+    title: "Digital Receipts",
+    body: 'Send receipts via SMS or email. Save time, money & the environment.',
     bgColor: Color.fromARGB(255, 144, 255, 140),
   ),
 ];
@@ -54,38 +53,47 @@ final pages = [
 class OnboardingExample extends StatelessWidget {
   const OnboardingExample({Key? key}) : super(key: key);
 
+  void _finish(BuildContext context) {
+    Navigator.pushReplacementNamed(context, '/');
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     return Scaffold(
-      body: ConcentricPageView(
-        colors: pages.map((p) => p.bgColor).toList(),
-        radius: screenWidth * 0.1,
-        // curve: Curves.ease,
-        nextButtonBuilder: (context) => Padding(
-          padding: const EdgeInsets.only(left: 3, top: 3), // visual center
-          child: Icon(
-            Icons.navigate_next,
-            size: screenWidth * 0.08,
+      body: Stack(
+        children: [
+          ConcentricPageView(
+            colors: pages.map((p) => p.bgColor).toList(),
+            radius: screenWidth * 0.1,
+            nextButtonBuilder: (context) => Padding(
+              padding: const EdgeInsets.only(left: 3, top: 3), // visual center
+              child: Icon(
+                Icons.navigate_next,
+                size: screenWidth * 0.08,
+              ),
+            ),
+            itemCount: pages.length,
+            onFinish: () => _finish(context),
+            itemBuilder: (index) {
+              final page = pages[index % pages.length];
+              final isLast = index == pages.length - 1;
+              return SafeArea(
+                child: _Page(page: page, isLast: isLast, onFinish: () => _finish(context)),
+              );
+            },
           ),
-        ),
-         itemCount: pages.length,
-         onFinish: () {
-           Navigator.pushNamed(context, '/');
-         },
-        // duration: const Duration(milliseconds: 1500),
-        // opacityFactor: 2.0,
-        // scaleFactor: 0.2,
-        // verticalPosition: 0.7,
-        // direction: Axis.vertical,
-        // itemCount: pages.length,
-        // physics: NeverScrollableScrollPhysics(),
-        itemBuilder: (index) {
-          final page = pages[index % pages.length];
-          return SafeArea(
-            child: _Page(page: page),
-          );
-        },
+          Positioned(
+            top: 12,
+            right: 8,
+            child: SafeArea(
+              child: TextButton(
+                onPressed: () => _finish(context),
+                child: const Text('Skip'),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -111,35 +119,59 @@ class PageData {
 
 class _Page extends StatelessWidget {
   final PageData page;
+  final bool isLast;
+  final VoidCallback onFinish;
 
-  const _Page({Key? key, required this.page}) : super(key: key);
+  const _Page({Key? key, required this.page, required this.isLast, required this.onFinish}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     space(double p) => SizedBox(height: screenHeight * p / 100);
     return Padding(
-      padding: const EdgeInsets.all(8.0),
+      padding: const EdgeInsets.all(18.0),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          space(4),
+          space(2),
           _Text(
             page: page,
             style: TextStyle(
               fontSize: screenHeight * 0.04,
             ),
           ),
-           space(6),
-         
-       
+          space(2),
+          if (page.body != null)
+            Text(
+              page.body!,
+              style: TextStyle(
+                color: page.textColor.withOpacity(0.9),
+                fontSize: 16,
+                height: 1.3,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          space(6),
           _Image(
             page: page,
             size: 300,
             iconSize: 170,
           ),
-          space(4),
-          
-        
+          const Spacer(),
+          if (isLast)
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: page.textColor.computeLuminance() > 0.5 ? Colors.black : Colors.white,
+                  foregroundColor: page.textColor.computeLuminance() > 0.5 ? Colors.white : Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: onFinish,
+                child: const Text('Get Started'),
+              ),
+            ),
         ],
       ),
     );
@@ -188,15 +220,9 @@ class _Image extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bgColor = page.bgColor
-        // .withBlue(page.bgColor.blue - 40)
         .withGreen(page.bgColor.green + 20)
         .withRed(page.bgColor.red - 100)
         .withAlpha(90);
-
-    final icon1Color =
-        page.bgColor.withBlue(page.bgColor.blue - 10).withGreen(220);
-    final icon2Color = page.bgColor.withGreen(66).withRed(77);
-    final icon3Color = page.bgColor.withRed(111).withGreen(220);
 
     return Container(
       width: size,
@@ -209,11 +235,7 @@ class _Image extends StatelessWidget {
         clipBehavior: Clip.none,
         fit: StackFit.expand,
         children: [
-         
-         
-        
-          Image.asset( page.image_url!),
-        
+          Image.asset(page.image_url ?? ''),
         ],
       ),
     );

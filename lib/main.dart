@@ -17,8 +17,6 @@ void main() async {
     WidgetsFlutterBinding.ensureInitialized();
     final dir = await getApplicationDocumentsDirectory();
     Hive.init(dir.path);
-
-
   }
   runApp(const MyApp());
 }
