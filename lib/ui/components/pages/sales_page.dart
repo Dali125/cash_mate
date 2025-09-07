@@ -1,8 +1,8 @@
 import 'dart:io';
+import 'dart:async';
 
 import 'package:cash_app/db/config.dart';
 import 'package:cash_app/models/sales_model.dart';
-import 'package:cash_app/ui/components/button.dart';
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -20,21 +20,46 @@ class SalesPage extends StatefulWidget {
 
 class _SalesPageState extends State<SalesPage> {
   final CartController cartController = Get.put(CartController());
-
   final db = Get.find<Config>();
-
   final deviceProperties = DeviceProperties();
-
   final _searchController = TextEditingController();
+
+  // New: cache inventory future & debounce
+  Future<List<Map<String, dynamic>>?>? _inventoryFuture;
+  Timer? _debounce;
   List<int> stockQuantities = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _inventoryFuture = db.getInventory();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      setState(() {
+        _inventoryFuture = db.getInventory(searchQuery: value.trim());
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
         title: const Text('Current Sale',
             style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         backgroundColor: bluePrimary,
+        elevation: 0,
       ),
       body: Stack(
         children: [
@@ -42,99 +67,175 @@ class _SalesPageState extends State<SalesPage> {
             child: Column(
               children: [
                 const SizedBox(height: 10),
-                SearchBar(
-                  elevation: WidgetStateProperty.all(2),
-                  backgroundColor: WidgetStateProperty.all(onBluePrimary),
-                  leading: Icon(Icons.search, color: Colors.blueGrey),
-                  hintText: 'Search inventory',
-                  controller: _searchController,
-                  onChanged: (value) {
-                    // Handle search logic here
-                    setState(() {
-                      _searchController.text = value;
-                    });
-                  },
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                  child: TextField(
+                    controller: _searchController,
+                    onChanged: _onSearchChanged,
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search),
+                      hintText: 'Search inventory',
+                      filled: true,
+                      fillColor: onBluePrimary,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(18),
+                        borderSide: BorderSide.none,
+                      ),
+                      suffixIcon: _searchController.text.isEmpty
+                          ? null
+                          : IconButton(
+                              icon: const Icon(Icons.close),
+                              onPressed: () {
+                                _searchController.clear();
+                                _onSearchChanged('');
+                              },
+                            ),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 10),
                 Expanded(
-                  child: FutureBuilder(
-                    future:
-                        db.getInventory(searchQuery: _searchController.text),
+                  child: FutureBuilder<List<Map<String, dynamic>>?>(
+                    future: _inventoryFuture,
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
-                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                        return const Center(
-                            child: Text('No inventory data available.'));
+                      if (snapshot.hasError) {
+                        return Center(child: Text('Error: ${snapshot.error}'));
                       }
-
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                        return const Center(child: Text('No inventory data available.'));
+                      }
                       final inventoryItems = snapshot.data!;
+                      // Build stock quantities _once_ per build
+                      stockQuantities = inventoryItems
+                          .map((e) => (e['quantity'] as num?)?.toInt() ?? 0)
+                          .toList();
                       return GridView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount:
-                              deviceProperties.isTablet(context) ? 4 : 2,
-                          childAspectRatio: 0.8,
+                          crossAxisCount: deviceProperties.isTablet(context) ? 4 : 2,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: .74,
                         ),
                         itemCount: inventoryItems.length,
                         itemBuilder: (context, index) {
                           final itemData = inventoryItems[index];
-                          final stockQuantity =
-                              (itemData['quantity'] as num?)?.toInt();
-                          stockQuantities.add(stockQuantity ?? 0);
-                          final itemName = itemData['name'] as String?;
+                          final int qty = stockQuantities[index];
+                          final String name = (itemData['name'] ?? 'Item').toString();
+                          final double? price = (itemData['price'] as num?)?.toDouble();
+                          final String imagePath = itemData['image_url'] ?? '';
+                          final bool outOfStock = qty < 1;
 
-                          final itemPrice =
-                              (itemData['price'] as num?)?.toDouble();
-                          return InkWell(
-                            onTap: () => cartController.addToCart(
-                                itemData, stockQuantities[index]),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Card(
-                                  elevation: 2,
-                                  shadowColor: bluePrimary,
-                                  color: ColorScheme.fromSeed(
-                                          seedColor: bluePrimary)
-                                      .surfaceContainer,
-                                  child: Column(
+                          return GestureDetector(
+                            onTap: outOfStock
+                                ? null
+                                : () => cartController.addToCart(
+                                      itemData,
+                                      stockQuantities[index],
+                                    ),
+                            child: AnimatedOpacity(
+                              opacity: outOfStock ? 0.55 : 1,
+                              duration: const Duration(milliseconds: 250),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(18),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(.06),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(18),
+                                  child: Stack(
                                     children: [
-                                      Expanded(
-                                        child: Image.file(
-                                          File(itemData['image_url'] ?? ''),
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (_, __, ___) =>
-                                              const Icon(Icons.broken_image,
-                                                  size: 50),
-                                        ),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                                        children: [
+                                          Expanded(
+                                            child: Hero(
+                                              tag: 'sale-item-${itemData['id']}',
+                                              child: Image.file(
+                                                File(imagePath),
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => const Center(
+                                                  child: Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+                                            child: Text(
+                                              name,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                              children: [
+                                                Text(
+                                                  'K ${price?.toStringAsFixed(2) ?? '--'}',
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: bluePrimary,
+                                                  ),
+                                                ),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                  decoration: BoxDecoration(
+                                                    color: outOfStock ? Colors.red.shade50 : Colors.green.shade50,
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  child: Text(
+                                                    outOfStock ? 'Out' : 'Qty: $qty',
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight: FontWeight.w600,
+                                                      color: outOfStock ? Colors.red : Colors.green.shade700,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      Text(itemName ?? 'Unnamed Item',
-                                          style: TextStyle(
-                                              fontWeight: FontWeight.bold)),
-                                      Text(
-                                          "K ${itemPrice?.toStringAsFixed(2) ?? 'N/A'}"),
+                                      if (outOfStock)
+                                        Positioned.fill(
+                                          child: Container(
+                                            color: Colors.white.withOpacity(.65),
+                                            child: const Center(
+                                              child: RotatedBox(
+                                                quarterTurns: 0,
+                                                child: Text(
+                                                  'OUT OF STOCK',
+                                                  style: TextStyle(
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 16,
+                                                    letterSpacing: 1.2,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
                                     ],
                                   ),
                                 ),
-                                itemData['quantity'] < 1
-                                    ? Center(
-                                        child: Positioned(
-                                          left: 1,
-                                          top: 1,
-                                          child: Transform.rotate(
-                                            angle: 1,
-                                            child: Text('Out Of Stock',
-                                                style: TextStyle(
-                                                  color: Colors.red,
-                                                  fontWeight: FontWeight.bold,
-                                                  fontSize: 30,
-                                                )),
-                                          ),
-                                        ),
-                                      )
-                                    : const SizedBox.shrink(),
-                              ],
+                              ),
                             ),
                           );
                         },
@@ -142,122 +243,179 @@ class _SalesPageState extends State<SalesPage> {
                     },
                   ),
                 ),
+                const SizedBox(height: 120), // space for bottom bar
               ],
             ),
           ),
+          // Improved Cart Sheet
           Positioned(
-            child: DraggableScrollableSheet(
-              builder: (context, controller) {
-                return Material(
-                  elevation: 20,
-                  color: Colors.white,
-                  shadowColor: Colors.black,
-                  borderRadius: BorderRadius.circular(10),
-                  child: SingleChildScrollView(
-                    controller: controller,
-                    child: Column(
-                      
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text("Sales Cart", 
-                              style: TextStyle(
-                                  fontSize: 25,
-                                  fontWeight: FontWeight.bold,
-                                  color: bluePrimary)),
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          width: DeviceProperties().getWidth(context),
-                          height: DeviceProperties().getHeight(context),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(10),
-                            color: Colors.white,
-                            
-                          ),
-                          child: Obx(
-                            () => ListView.builder(
-                              controller: controller,
-                              itemCount: cartController.cart.length,
-                              itemBuilder: (context, index) {
-                                if (cartController.cart.length == 0) {
-                                  return const Center(
-                                      child: Text('No items in cart'));
-                                }else{
-                                
-                                return ListTile(
-                                  title: Text(
-                                      cartController.cart[index].name.toString()),
-                                  subtitle:
-                                      Text("K ${cartController.cart[index].price}"),
-                                  trailing: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      IconButton(
-                                          icon: Icon(Icons.remove),
-                                          onPressed: () {
-                                            cartController.decrementQuantity(
-                                                index,
-                                                cartController.cart[index].quantity
-                                                    as int);
-                                            print(stockQuantities[index]);
-                                          }),
-                                      Text(cartController.cart[index].quantity
-                                          .toString()),
-                                      IconButton(
-                                        icon: Icon(Icons.add),
-                                        onPressed: () =>
-                                            cartController.incrementQuantity(index),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }},
+            left: 0,
+            right: 0,
+            bottom: 100, // leave room for summary bar
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * .82, // max height available to sheet
+              child: DraggableScrollableSheet(
+                expand: false,
+                initialChildSize: .18,
+                minChildSize: .14,
+                maxChildSize: 1.0,
+                snap: true,
+                builder: (context, scrollController) {
+                  return Material(
+                    elevation: 16,
+                    color: Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                    child: Obx(() {
+                      final cartItems = cartController.cart;
+                      return ListView(
+                        controller: scrollController,
+                        padding: const EdgeInsets.only(bottom: 16),
+                        children: [
+                          const SizedBox(height: 10),
+                          Center(
+                            child: Container(
+                              width: 60,
+                              height: 6,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade300,
+                                borderRadius: BorderRadius.circular(30),
+                              ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
+                          const SizedBox(height: 10),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('Sales Cart', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: bluePrimary)),
+                                Text('${cartItems.length} items', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          if (cartItems.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 40.0),
+                              child: Column(
+                                children: [
+                                  Icon(Icons.shopping_cart_outlined, size: 60, color: Colors.grey.shade400),
+                                  const SizedBox(height: 12),
+                                  Text('Cart is empty', style: TextStyle(color: Colors.grey.shade600)),
+                                ],
+                              ),
+                            )
+                          else
+                            ...List.generate(cartItems.length, (index) {
+                              final item = cartItems[index];
+                              return Dismissible(
+                                key: ValueKey('${item.name}-$index'),
+                                direction: DismissDirection.endToStart,
+                                background: Container(
+                                  alignment: Alignment.centerRight,
+                                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent,
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Icon(Icons.delete, color: Colors.white),
+                                ),
+                                onDismissed: (_) => cartController.removeFromCart(index),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 4),
+                                  child: Material(
+                                    color: Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: ListTile(
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      title: Text(item.name.toString(), style: const TextStyle(fontWeight: FontWeight.w600)),
+                                      subtitle: Text('K ${item.price}'),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.remove_circle_outline),
+                                            onPressed: () => cartController.decrementQuantity(index, stockQuantities.isNotEmpty && index < stockQuantities.length ? stockQuantities[index] : item.quantity as int),
+                                          ),
+                                          Text(item.quantity.toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                          IconButton(
+                                            icon: const Icon(Icons.add_circle_outline),
+                                            onPressed: () => cartController.incrementQuantity(index),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                        ],
+                      );
+                    }),
+                  );
+                },
+              ),
             ),
           ),
+          // Bottom summary + confirm
           Positioned(
             bottom: 0,
+            left: 0,
+            right: 0,
             child: Container(
-              width: deviceProperties.getWidth(context),
-              height: 100,
-              color: Colors.white,
-              child: Obx(
-                () => Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    Text('Total: K ${cartController.total}',
-                        style: TextStyle(fontSize: 28)),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 5.0, right: 5.0),
-                      child: Button(
-                        width: deviceProperties.getWidth(context),
-                        height: 50,
-                        color: bluePrimary,
-                        text: 'Confirm Transaction',
-                        onPressed: () async {
-                          SalesModel item = SalesModel(
-                            date: DateTime.now().toString(),
-                            total: cartController.total.value,
-                            itemsSold: cartController.cart,
-                            
-                          );
-                          cartController.total.value == 0.0 ? Get.snackbar('Error', 'No items in cart') :
-                          Get.toNamed('/payment_page', arguments: item);
-                        },
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0x1A000000),
+                    blurRadius: 12,
+                    offset: Offset(0, -2),
+                  )
+                ],
+              ),
+              child: SafeArea(
+                top: false,
+                child: Obx(() {
+                  final total = cartController.total.value;
+                  final disabled = total == 0.0;
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('Total:', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                          Text('K ${total.toStringAsFixed(2)}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: disabled ? Colors.grey : bluePrimary)),
+                        ],
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 54,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check_circle_outline),
+                          style: ElevatedButton.styleFrom(
+                            elevation: disabled ? 0 : 4,
+                            backgroundColor: disabled ? Colors.grey.shade400 : bluePrimary,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: disabled
+                              ? null
+                              : () async {
+                                  final item = SalesModel(
+                                    date: DateTime.now().toIso8601String(),
+                                    total: total,
+                                    itemsSold: cartController.cart,
+                                  );
+                                  Get.toNamed('/payment_page', arguments: item);
+                                },
+                          label: const Text('Confirm Transaction', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
               ),
             ),
           ),

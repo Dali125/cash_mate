@@ -1,230 +1,279 @@
 import 'dart:developer';
-
-import 'package:cash_app/models/inventort.dart';
+import 'package:flutter/services.dart';
 import 'package:cash_app/models/sales_model.dart';
-import 'package:cash_app/services/device_properties.dart';
-import 'package:cash_app/ui/components/button.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-class PaymentPage extends StatelessWidget {
+class PaymentPage extends StatefulWidget {
   const PaymentPage({super.key});
   @override
-  Widget build(BuildContext context) {
-    final cashcontroller = TextEditingController();
+  State<PaymentPage> createState() => _PaymentPageState();
+}
+
+class _PaymentPageState extends State<PaymentPage> {
+  final TextEditingController _cashController = TextEditingController();
+  late final SalesModel sale;
+  double _cashValue = 0.0;
+  bool _cashValid = false;
+
+  @override
+  void initState() {
+    super.initState();
     final args = Get.arguments;
-    log(args.toString(), time: DateTime.now());
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Paymnents"),
+    sale = args is SalesModel ? args : (args['sales'] as SalesModel);
+    sale.total ??= 0.0; // ensure not null
+    _cashController.addListener(_onCashChanged);
+  }
+
+  void _onCashChanged() {
+    final txt = _cashController.text.trim();
+    final val = double.tryParse(txt) ?? 0.0;
+    final total = sale.total ?? 0.0;
+    setState(() {
+      _cashValue = val;
+      _cashValid = val >= total && val > 0;
+    });
+  }
+
+  @override
+  void dispose() {
+    _cashController.dispose();
+    super.dispose();
+  }
+
+  void _proceedPayment({required String method, required double amountPaid}) {
+    final total = sale.total ?? 0.0;
+    final changeRaw = method == 'Cash' ? (amountPaid - total) : 0.0;
+    final change = changeRaw < 0 ? 0.0 : changeRaw;
+    final map = {
+      'sales': sale,
+      'transaction_type': method,
+      'amount paid': amountPaid.toStringAsFixed(2),
+      'change': change.toStringAsFixed(2),
+    };
+    Get.toNamed('/transaction_complete', arguments: map);
+  }
+
+  Future<void> _showCashSheet() async {
+    _cashController.clear();
+    _onCashChanged();
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(14.0),
-        child: Column(
-          children: [
-            Container(
-              width: DeviceProperties().getWidth(context),
-              decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black12),
-                  borderRadius: BorderRadius.circular(4)),
-              child: Padding(
-                padding: EdgeInsets.all(10),
-                child: Column(
-                  children: [
-                    Text(
-                      "Total Amount Expected",
-                      style: TextStyle(fontSize: 24),
-                    ),
-                    Text(
-                      "K ${args.total}",
-                      style:
-                          TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                  ],
+      builder: (context) {
+        final total = sale.total ?? 0.0;
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 16,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 46,
+                  height: 5,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
               ),
+              Text('Cash Payment', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: bluePrimary)),
+              const SizedBox(height: 6),
+              Text('Total Due: K ${total.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _cashController,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*[.]?[0-9]{0,2}'))],
+                decoration: InputDecoration(
+                  labelText: 'Amount Received',
+                  prefixIcon: const Icon(Icons.payments_outlined),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: bluePrimary.withOpacity(.2))),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: bluePrimary, width: 1.4)),
+                  helperText: _cashValue > 0 && !_cashValid ? 'Amount is less than total' : null,
+                  errorText: _cashValue > 0 && !_cashValid ? 'Insufficient amount' : null,
+                ),
+              ),
+              const SizedBox(height: 14),
+              if (_cashValid)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Change:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    Text('K ${(_cashValue - total).toStringAsFixed(2)}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green)),
+                  ],
+                ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _cashValid ? bluePrimary : Colors.grey.shade400,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: _cashValid ? 4 : 0,
+                  ),
+                  onPressed: _cashValid ? () { Navigator.pop(context); _proceedPayment(method: 'Cash', amountPaid: _cashValue); } : null,
+                  label: const Text('Confirm Cash Payment', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDialog({required String title, required String content, required VoidCallback onYes}) async {
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('No')),
+          TextButton(onPressed: () { Navigator.pop(context); onYes(); }, child: const Text('Yes')),
+        ],
+      ),
+    );
+  }
+
+  Widget _summaryCard(BuildContext context) {
+    final total = sale.total ?? 0.0;
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Padding(
+        padding: const EdgeInsets.all(18.0),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 28,
+              backgroundColor: bluePrimary.withOpacity(.1),
+              child: Icon(Icons.point_of_sale, color: bluePrimary, size: 30),
             ),
-            SizedBox(height: 20),
-            Text(
-              "Please Choose the customers payment Method",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(width: 16),
             Expanded(
-                child: GridView(
-              gridDelegate:
-                  SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2),
-              children: [
-                GridTile(
-                    child: Material(
-                  child: InkWell(
-                    onTap: () async {
-                      try {
-                        showModalBottomSheet(
-                            context: context,
-                            builder: (context) => DraggableScrollableSheet(
-                                initialChildSize: 1,
-                                maxChildSize: 1,
-                                builder: (context, controller) {
-                                  return Padding(
-                                    padding: const EdgeInsets.all(14.0),
-                                    child: Container(
-                                      height:
-                                          DeviceProperties().getHeight(context),
-                                      child: Column(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.start,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text("Cash Payment",
-                                              style: TextStyle(
-                                                  fontSize: Theme.of(context)
-                                                      .textTheme
-                                                      .titleLarge
-                                                      ?.fontSize,
-                                                  fontWeight: FontWeight.bold)),
-                                          Text("Enter Amount",
-                                              style: TextStyle(
-                                                  fontSize: Theme.of(context)
-                                                      .textTheme
-                                                      .titleMedium
-                                                      ?.fontSize,
-                                                  fontWeight: FontWeight.bold)),
-                                          SizedBox(
-                                            height: 10,
-                                          ),
-                                          TextField(
-                                            keyboardType: TextInputType.number,
-                                            controller: cashcontroller,
-                                            decoration: InputDecoration(
-                                              border: OutlineInputBorder(),
-                                              hintText: "Enter Amount Received",
-                                            ),
-                                          ),
-                                          Expanded(child: Container()),
-                                          Button(
-                                            width: DeviceProperties()
-                                                .getWidth(context),
-                                            height: 60,
-                                            color: bluePrimary,
-                                            text: 'Proceed',
-                                            onPressed: () {
-                                              Map<String, dynamic> values = {
-                                                "sales": args,
-                                                "transaction_type": "Cash",
-                                                "amount paid":
-                                                    cashcontroller.text.trim()
-                                              };
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Total Amount Due', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.grey)),
+                  Text('K ${total.toStringAsFixed(2)}', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: bluePrimary)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-                                              Get.toNamed(
-                                                  "/transaction_complete",
-                                                  arguments: values);
-                                            },
-                                          )
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }));
-                      } catch (e) {
-                        Get.showSnackbar(GetSnackBar(
-                          message: e.toString(),
-                        ));
-                      }
-                    },
-                    child: Card(
-                      child: Container(
-                        child: Column(
-                          children: [
-                            Expanded(
-                                child: Image.asset(
-                              "assets/money.png",
-                              height: 50,
-                            )),
-                            Text(
-                              "Cash",
-                              style: TextStyle(
-                                  fontSize: 20, fontWeight: FontWeight.bold),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                )),
-                GridTile(
-                    child: Material(
-                  child: InkWell(
-                    onTap: () async {
-                      await showDialog(
-                          context: context,
-                          builder: (context) {
-                            return AlertDialog(
-                              title: Text("Continue Transaction?"),
-                              content: Text(
-                                  "Change is not allowed for mobile money"),
-                              actions: [
-                                TextButton(
-                                    onPressed: () {
-                                      Map<String, dynamic> values  = {
-                                        "transaction_type": "Mobile Money",
-                                        "sales": args,
-                                        "amount paid": args.total.toString()
-                                      };
-
-                                      Get.toNamed("/transaction_complete",
-                                          arguments: values);
-                                    },
-                                    child: Text("Yes")),
-                                TextButton(
-                                    onPressed: () {
-                                      Get.back();
-                                    },
-                                    child: Text("No"))
-                              ],
-                            );
-                          });
-                    },
-                    child: Card(
-                      child: Column(
-                        children: [
-                          Expanded(
-                              child: Image.asset(
-                            "assets/mobile_money.png",
-                            height: 50,
-                          )),
-                          Text(
-                            "Mobile Money",
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold),
-                          )
-                        ],
-                      ),
-                    ),
-                  ),
-                )),
-                GridTile(
-                    child: Card(
-                  child: Container(
-                    child: Column(
-                      children: [
-                        Expanded(
-                          child: Image.asset(
-                            "assets/debt.png",
-                            height: 50,
-                          ),
-                        ),
-                        Text("Nkongole",
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.bold))
-                      ],
-                    ),
-                  ),
-                )),
+  Widget _paymentOption({required String title, required String asset, required VoidCallback onTap, Color? color, IconData? icon, String? subtitle}) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Ink(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 8, offset: const Offset(0,4)),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: asset.isNotEmpty
+                    ? Image.asset(asset, fit: BoxFit.contain)
+                    : CircleAvatar(radius: 34, backgroundColor: (color ?? bluePrimary).withOpacity(.12), child: Icon(icon, color: color ?? bluePrimary, size: 34)),
+              ),
+              const SizedBox(height: 10),
+              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+              if (subtitle != null) ...[
+                const SizedBox(height: 4),
+                Text(subtitle, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
               ],
-            ))
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    log(sale.toJson().toString(), time: DateTime.now());
+    final width = MediaQuery.of(context).size.width;
+    final isWide = width > 640;
+    return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
+      appBar: AppBar(
+        title: const Text('Payment'),
+        backgroundColor: bluePrimary,
+        elevation: 0,
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _summaryCard(context),
+            const SizedBox(height: 18),
+            Text('Select Payment Method', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: bluePrimary)),
+            const SizedBox(height: 12),
+            Expanded(
+              child: GridView.count(
+                crossAxisCount: isWide ? 3 : 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: .95,
+                children: [
+                  _paymentOption(
+                    title: 'Cash',
+                    asset: 'assets/money.png',
+                    subtitle: 'Accept & give change',
+                    onTap: _showCashSheet,
+                  ),
+                  _paymentOption(
+                    title: 'Mobile Money',
+                    asset: 'assets/mobile_money.png',
+                    subtitle: 'Exact amount only',
+                    onTap: () => _confirmDialog(
+                      title: 'Mobile Money',
+                      content: 'Confirm full payment via mobile money? No change allowed.',
+                      onYes: () => _proceedPayment(method: 'Mobile Money', amountPaid: (sale.total ?? 0.0)),
+                    ),
+                  ),
+                  _paymentOption(
+                    title: 'Nkongole',
+                    asset: 'assets/debt.png',
+                    subtitle: 'Record as debt',
+                    onTap: () => _confirmDialog(
+                      title: 'Record Debt',
+                      content: 'Record this sale as debt (Nkongole)?',
+                      onYes: () => _proceedPayment(method: 'Nkongole', amountPaid: 0),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),

@@ -50,6 +50,10 @@ dependencies:
   printing: ^5.14.2
   onboarding_overlay: ^3.2.2
   concentric_transition: ^1.0.3
+  showcaseview: ^4.0.1
+  intl: ^0.18.0
+  share_plus: ^7.2.2
+
 
 dev_dependencies:
   flutter_test:

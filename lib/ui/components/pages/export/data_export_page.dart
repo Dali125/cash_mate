@@ -1,0 +1,480 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:cash_app/db/config.dart';
+import 'package:cash_app/utils/color.dart';
+import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+class DataExportPage extends StatefulWidget {
+  const DataExportPage({Key? key}) : super(key: key);
+
+  @override
+  State<DataExportPage> createState() => _DataExportPageState();
+}
+
+class _DataExportPageState extends State<DataExportPage> {
+  final Config db = Get.find<Config>();
+  bool _isExporting = false;
+  
+  // Export options
+  bool _exportSales = true;
+  bool _exportInventory = true;
+  bool _includeImages = false;
+  String _dateRange = 'all';
+  DateTime? _startDate;
+  DateTime? _endDate;
+
+  Future<void> _exportToCSV() async {
+    if (!_exportSales && !_exportInventory) {
+      Get.snackbar(
+        'Error',
+        'Please select at least one data type to export',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+      );
+      return;
+    }
+
+    setState(() => _isExporting = true);
+
+    try {
+      final directory = await getApplicationDocumentsDirectory();
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
+      final List<String> filePaths = [];
+
+      // Export Sales Data
+      if (_exportSales) {
+        final salesFile = File('${directory.path}/sales_export_$timestamp.csv');
+        final salesCSV = await _generateSalesCSV();
+        await salesFile.writeAsString(salesCSV);
+        filePaths.add(salesFile.path);
+      }
+
+      // Export Inventory Data
+      if (_exportInventory) {
+        final inventoryFile = File('${directory.path}/inventory_export_$timestamp.csv');
+        final inventoryCSV = await _generateInventoryCSV();
+        await inventoryFile.writeAsString(inventoryCSV);
+        filePaths.add(inventoryFile.path);
+      }
+
+      // Share the files
+      if (filePaths.isNotEmpty) {
+        await Share.shareXFiles(
+          filePaths.map((path) => XFile(path)).toList(),
+          text: 'CashMate Data Export - $timestamp',
+        );
+
+        Get.snackbar(
+          'Success',
+          'Data exported successfully! Files have been shared.',
+          backgroundColor: Colors.green.shade100,
+          colorText: Colors.green.shade900,
+          duration: const Duration(seconds: 3),
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Export failed: ${e.toString()}',
+        backgroundColor: Colors.red.shade100,
+        colorText: Colors.red.shade900,
+      );
+    } finally {
+      setState(() => _isExporting = false);
+    }
+  }
+
+  Future<String> _generateSalesCSV() async {
+    final salesData = await db.getSalesHistory();
+    if (salesData == null || salesData.isEmpty) {
+      return 'No sales data available\n';
+    }
+
+    final buffer = StringBuffer();
+    
+    // CSV Headers
+    buffer.writeln('Date,Invoice ID,Amount,Transaction Type,Items,Item Details');
+
+    // Filter by date range if specified
+    final filteredSales = _filterSalesByDate(salesData);
+
+    for (final sale in filteredSales) {
+      final date = sale['date'] ?? '';
+      final id = sale['id'] ?? '';
+      final amount = sale['amount'] ?? 0;
+      final transactionType = sale['transaction_type'] ?? '';
+      
+      // Parse items if available
+      String itemsCount = '0';
+      String itemDetails = '';
+      
+      try {
+        if (sale['items'] != null) {
+          final items = jsonDecode(sale['items'].toString());
+          if (items is List) {
+            itemsCount = items.length.toString();
+            itemDetails = items.map((item) {
+              return '${item['name']} (${item['quantity']}x @ K${item['price']})';
+            }).join('; ');
+          }
+        }
+      } catch (e) {
+        // Handle parsing errors gracefully
+      }
+
+      // Escape commas and quotes in text fields
+      final escapedDetails = itemDetails.replaceAll('"', '""');
+      
+      buffer.writeln('"$date","$id","$amount","$transactionType","$itemsCount","$escapedDetails"');
+    }
+
+    return buffer.toString();
+  }
+
+  Future<String> _generateInventoryCSV() async {
+    final inventoryData = await db.getInventory();
+    if (inventoryData == null || inventoryData.isEmpty) {
+      return 'No inventory data available\n';
+    }
+
+    final buffer = StringBuffer();
+    
+    // CSV Headers
+    if (_includeImages) {
+      buffer.writeln('Name,Price,Quantity,Image URL,Stock Status,Total Value');
+    } else {
+      buffer.writeln('Name,Price,Quantity,Stock Status,Total Value');
+    }
+
+    for (final item in inventoryData) {
+      final name = item['name'] ?? '';
+      final price = (item['price'] ?? 0).toString();
+      final quantity = (item['quantity'] ?? 0).toString();
+      final imageUrl = item['image_url'] ?? '';
+      
+      // Calculate stock status
+      final qty = (item['quantity'] ?? 0) as num;
+      String stockStatus = 'In Stock';
+      if (qty == 0) {
+        stockStatus = 'Out of Stock';
+      } else if (qty < 5) {
+        stockStatus = 'Critical';
+      } else if (qty < 10) {
+        stockStatus = 'Low Stock';
+      }
+
+      // Calculate total value
+      final totalValue = (((item['price'] ?? 0) as num) * qty).toString();
+
+      // Escape commas and quotes in text fields
+      final escapedName = name.replaceAll('"', '""');
+      final escapedImageUrl = imageUrl.replaceAll('"', '""');
+
+      if (_includeImages) {
+        buffer.writeln('"$escapedName","$price","$quantity","$escapedImageUrl","$stockStatus","$totalValue"');
+      } else {
+        buffer.writeln('"$escapedName","$price","$quantity","$stockStatus","$totalValue"');
+      }
+    }
+
+    return buffer.toString();
+  }
+
+  List<Map<String, dynamic>> _filterSalesByDate(List<Map<String, dynamic>> salesData) {
+    if (_dateRange == 'all') return salesData;
+
+    final now = DateTime.now();
+    DateTime cutoffDate;
+
+    switch (_dateRange) {
+      case 'week':
+        cutoffDate = now.subtract(const Duration(days: 7));
+        break;
+      case 'month':
+        cutoffDate = now.subtract(const Duration(days: 30));
+        break;
+      case 'year':
+        cutoffDate = now.subtract(const Duration(days: 365));
+        break;
+      case 'custom':
+        if (_startDate == null || _endDate == null) return salesData;
+        return salesData.where((sale) {
+          final dateStr = sale['date']?.toString();
+          if (dateStr == null) return false;
+          final saleDate = DateTime.tryParse(dateStr);
+          if (saleDate == null) return false;
+          return saleDate.isAfter(_startDate!) && saleDate.isBefore(_endDate!.add(const Duration(days: 1)));
+        }).toList();
+      default:
+        return salesData;
+    }
+
+    return salesData.where((sale) {
+      final dateStr = sale['date']?.toString();
+      if (dateStr == null) return false;
+      final saleDate = DateTime.tryParse(dateStr);
+      if (saleDate == null) return false;
+      return saleDate.isAfter(cutoffDate);
+    }).toList();
+  }
+
+  Future<void> _selectDateRange() async {
+    final DateTimeRange? picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+      initialDateRange: _startDate != null && _endDate != null
+          ? DateTimeRange(start: _startDate!, end: _endDate!)
+          : null,
+    );
+
+    if (picked != null) {
+      setState(() {
+        _startDate = picked.start;
+        _endDate = picked.end;
+      });
+    }
+  }
+
+  Widget _buildOptionCard({
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+    IconData? icon,
+  }) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: icon != null
+            ? CircleAvatar(
+                backgroundColor: bluePrimary.withOpacity(0.1),
+                child: Icon(icon, color: bluePrimary),
+              )
+            : null,
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(subtitle, style: TextStyle(color: Colors.grey.shade600)),
+        trailing: Switch(
+          value: value,
+          onChanged: onChanged,
+          activeColor: bluePrimary,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateRangeCard() {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  backgroundColor: bluePrimary.withOpacity(0.1),
+                  child: Icon(Icons.date_range, color: bluePrimary),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Export Date Range',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildDateChip('All Time', 'all'),
+                _buildDateChip('Last Week', 'week'),
+                _buildDateChip('Last Month', 'month'),
+                _buildDateChip('Last Year', 'year'),
+                _buildDateChip('Custom Range', 'custom'),
+              ],
+            ),
+            if (_dateRange == 'custom') ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _selectDateRange,
+                      icon: const Icon(Icons.calendar_today),
+                      label: Text(
+                        _startDate != null && _endDate != null
+                            ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year} - ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                            : 'Select Date Range',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDateChip(String label, String value) {
+    final isSelected = _dateRange == value;
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (selected) {
+        setState(() => _dateRange = value);
+      },
+      selectedColor: bluePrimary.withOpacity(0.2),
+      checkmarkColor: bluePrimary,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Export Data'),
+        backgroundColor: bluePrimary,
+        elevation: 0,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Export your business data to CSV files for backup, analysis, or sharing with your accountant.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey.shade600,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            Text(
+              'Data Types',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            _buildOptionCard(
+              title: 'Sales Data',
+              subtitle: 'Export transaction history, amounts, and items sold',
+              value: _exportSales,
+              onChanged: (value) => setState(() => _exportSales = value),
+              icon: Icons.point_of_sale,
+            ),
+            
+            _buildOptionCard(
+              title: 'Inventory Data',
+              subtitle: 'Export product information, prices, and stock levels',
+              value: _exportInventory,
+              onChanged: (value) => setState(() => _exportInventory = value),
+              icon: Icons.inventory_2,
+            ),
+            
+            const SizedBox(height: 24),
+            
+            Text(
+              'Export Options',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey.shade800,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            _buildOptionCard(
+              title: 'Include Image URLs',
+              subtitle: 'Include product image paths in inventory export',
+              value: _includeImages,
+              onChanged: (value) => setState(() => _includeImages = value),
+              icon: Icons.image,
+            ),
+            
+            const SizedBox(height: 16),
+            
+            if (_exportSales) _buildDateRangeCard(),
+            
+            const SizedBox(height: 32),
+            
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton.icon(
+                onPressed: _isExporting ? null : _exportToCSV,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: bluePrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 4,
+                ),
+                icon: _isExporting
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.download, color: Colors.white),
+                label: Text(
+                  _isExporting ? 'Exporting...' : 'Export to CSV',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+            
+            const SizedBox(height: 16),
+            
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.blue.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.blue.shade700),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'CSV files can be opened in Excel, Google Sheets, or any spreadsheet application for further analysis.',
+                      style: TextStyle(
+                        color: Colors.blue.shade700,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

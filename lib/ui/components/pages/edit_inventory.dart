@@ -2,110 +2,191 @@ import 'package:cash_app/controllers/media_controller.dart';
 import 'package:cash_app/db/config.dart';
 import 'package:cash_app/services/device_properties.dart';
 import 'package:cash_app/ui/components/button.dart';
-import 'package:cash_app/ui/components/custom_text_field.dart';
 import 'package:cash_app/ui/components/image_picker_custom.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 import '../../../models/inventort.dart';
 
-class EditInventoryPage extends StatelessWidget {
+class EditInventoryPage extends StatefulWidget {
   const EditInventoryPage({Key? key}) : super(key: key);
+  @override
+  State<EditInventoryPage> createState() => _EditInventoryPageState();
+}
+
+class _EditInventoryPageState extends State<EditInventoryPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController itemName = TextEditingController();
+  final TextEditingController price = TextEditingController();
+  final TextEditingController quantityController = TextEditingController();
+  final TextEditingController imagePath = TextEditingController();
+  bool _saving = false;
+  late dynamic id;
+
+  InputDecoration _dec(String hint, IconData icon) => InputDecoration(
+        prefixIcon: Icon(icon, color: blueSecondary),
+        hintText: hint,
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: bluePrimary.withOpacity(.25)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: bluePrimary.withOpacity(.15)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: bluePrimary, width: 1.4),
+        ),
+      );
+
+  @override
+  void initState() {
+    super.initState();
+    final args = Get.arguments ?? {};
+    id = args['id'];
+    itemName.text = args['name']?.toString() ?? '';
+    price.text = args['price']?.toString() ?? '';
+    quantityController.text = args['quantity']?.toString() ?? '';
+    imagePath.text = args['image_url']?.toString() ?? '';
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    setState(() => _saving = true);
+    try {
+      final db = Get.find<Config>();
+      Item myItem = Item(
+        name: itemName.text.trim(),
+        price: double.parse(price.text.trim()),
+        quantity: int.parse(quantityController.text.trim()),
+        imageUrl: imagePath.text.trim(),
+      );
+      await db.updateInventory(id, myItem);
+      Get.snackbar('Success', 'Inventory updated successfully', snackPosition: SnackPosition.BOTTOM);
+      Get.offAllNamed('/');
+    } catch (e) {
+      Get.snackbar('Error', 'Failed: $e', backgroundColor: Colors.redAccent, colorText: Colors.white);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mc = Get.find<MediaController>();
-    final db = Get.find<Config>();
-    final arguments = Get.arguments;
-    final id = arguments['id'] ?? '';
-    final priceDB = arguments['price'] ?? 0;
-    final name = arguments['name'] ?? '';
-    final photo = arguments['image_url'] ?? '';
-    final quantity = arguments['quantity'] ?? 0;
-
-    TextEditingController itemName = TextEditingController();
-    TextEditingController price = TextEditingController();
-    TextEditingController quantityController = TextEditingController();
-    TextEditingController imagePath = TextEditingController();
-    itemName.text = name;
-    price.text = priceDB.toString();
-    quantityController.text = quantity.toString();
-    imagePath.text = photo;
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F6FA),
       appBar: AppBar(
-        title: const Text('Edit Inventory'),
+        elevation: 0,
+        backgroundColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_rounded, color: bluePrimary),
+          onPressed: () => Get.back(),
+        ),
+        title: Text('Edit Inventory', style: TextStyle(color: bluePrimary, fontWeight: FontWeight.bold)),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
+      body: Form(
+        key: _formKey,
         child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 40),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Edit price, quantity, image, and description',
-                  style: TextStyle(fontSize: 16, color: Colors.grey)),
-              SizedBox(height: 20),
-              buildTextField(
-                controller: itemName,
-                hintText: 'Product Name',
-                icon: Icons.abc,
-              ),
-              buildTextField(
-                controller: price,
-                hintText: 'Price',
-                icon: Icons.attach_money,
-                keyboardType: TextInputType.number,
-              ),
-              buildTextField(
-                controller: quantityController,
-                hintText: 'Quantity',
-                icon: Icons.numbers,
-                keyboardType: TextInputType.number,
-              ),
-              ImagePickerWidget(mc: mc, imagePath: imagePath),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Text(
-                  'Description',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-              ),
-              TextField(
-                controller: imagePath,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  hintText: 'Add item description',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide(color: blueSecondary),
+              Text('Update item details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+              const SizedBox(height: 18),
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                child: Padding(
+                  padding: const EdgeInsets.all(18.0),
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: itemName,
+                        decoration: _dec('Product Name', Icons.inventory_2_outlined),
+                        textInputAction: TextInputAction.next,
+                        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: price,
+                        decoration: _dec('Price (K)', Icons.attach_money_rounded),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*[.]?[0-9]{0,2}'))],
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Required';
+                          final val = double.tryParse(v);
+                          if (val == null) return 'Invalid number';
+                          if (val < 0) return 'Must be positive';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 14),
+                      TextFormField(
+                        controller: quantityController,
+                        decoration: _dec('Quantity', Icons.numbers_rounded),
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Required';
+                          final val = int.tryParse(v);
+                          if (val == null) return 'Invalid number';
+                          if (val < 0) return 'Must be positive';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text('Image', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                border: Border.all(color: Colors.grey.shade300),
+                                borderRadius: BorderRadius.circular(16),
+                                color: Colors.white,
+                              ),
+                              child: Column(
+                                children: [
+                                  ImagePickerWidget(mc: mc, imagePath: imagePath),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    imagePath.text.isEmpty ? 'Select from gallery' : 'Selected',
+                                    style: TextStyle(fontSize: 12, color: imagePath.text.isEmpty ? Colors.grey : Colors.green),
+                                  )
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-              SizedBox(height: 20),
-              Button(
-                width: DeviceProperties().getWidth(context),
-                height: 50,
-                color: blueTertiary,
-                text: 'Update Inventory',
-                onPressed: () async {
-                  if (itemName.text.isNotEmpty &&
-                      price.text.isNotEmpty &&
-                      quantityController.text.isNotEmpty &&
-                      imagePath.text.isNotEmpty) {
-                    Item myItem = Item(
-                      name: itemName.text,
-                      price: double.parse(price.text),
-                      quantity: int.parse(quantityController.text),
-                      imageUrl: imagePath.text,
-                    );
-                    await db.updateInventory(id, myItem);
-                    Get.snackbar('Success', 'Inventory updated successfully');
-
-                    Get.offAllNamed('/');
-                  } else {
-                    Get.snackbar('Error', 'Please fill all fields');
-                  }
-                },
+              const SizedBox(height: 28),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _saving
+                    ? const Center(child: CircularProgressIndicator())
+                    : Button(
+                        width: DeviceProperties().getWidth(context),
+                        height: 54,
+                        color: bluePrimary,
+                        text: 'Update Inventory',
+                        onPressed: _submit,
+                      ),
               ),
             ],
           ),
