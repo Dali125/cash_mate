@@ -2,11 +2,13 @@
 import 'dart:io';
 
 import 'package:cash_app/app.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
 
 import 'package:path_provider/path_provider.dart';
+import 'package:showcaseview/showcaseview.dart';
 
 
 void main() async {
@@ -18,5 +20,11 @@ void main() async {
     final dir = await getApplicationDocumentsDirectory();
     Hive.init(dir.path);
   }
-  runApp(const MyApp());
+   runApp(
+    ShowCaseWidget(
+      builder: Builder(
+        builder: (context) => const MyApp(),
+      ),
+    ),
+  );
 }
