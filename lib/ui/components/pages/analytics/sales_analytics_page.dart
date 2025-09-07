@@ -136,30 +136,91 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> with SingleTick
         Text(
           'Top Selling Items',
           style: TextStyle(
-            fontSize: 16,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: Colors.grey.shade800,
           ),
         ),
         const SizedBox(height: 12),
-        Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          elevation: 2,
-          child: ListView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: topItems.take(5).length,
-            itemBuilder: (context, index) {
-              final item = topItems[index];
-              return ListTile(
-                title: Text(item.key),
-                trailing: Text(
-                  '${item.value} sold',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-              );
-            },
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(color: Colors.grey.shade100, width: 1),
           ),
+          child: topItems.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400),
+                        const SizedBox(height: 12),
+                        Text(
+                          'No sales data available',
+                          style: TextStyle(color: Colors.grey.shade600),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: topItems.take(5).length,
+                  separatorBuilder: (context, index) => Divider(color: Colors.grey.shade100, height: 1),
+                  itemBuilder: (context, index) {
+                    final item = topItems[index];
+                    final isFirst = index == 0;
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      leading: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isFirst ? Colors.amber.withOpacity(0.1) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '#${index + 1}',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: isFirst ? Colors.amber.shade700 : Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        item.key,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.green.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.green.shade200),
+                        ),
+                        child: Text(
+                          '${item.value} sold',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green.shade700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
         ),
       ],
     );
@@ -207,30 +268,38 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> with SingleTick
                 ) ?? 0),
               );
 
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+              return Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                  border: Border.all(color: Colors.grey.shade100, width: 1),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         _formatPeriodHeader(period.key),
                         style: const TextStyle(
-                          fontSize: 16,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 16),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          _trendMetric('Revenue', 'K ${totalRevenue.toStringAsFixed(2)}'),
-                          _trendMetric('Sales', period.value.length.toString()),
-                          _trendMetric('Items', itemCount.toString()),
+                          Expanded(child: _trendMetric('Revenue', 'K ${totalRevenue.toStringAsFixed(2)}', Icons.monetization_on_outlined, Colors.green)),
+                          Expanded(child: _trendMetric('Sales', period.value.length.toString(), Icons.shopping_cart_outlined, Colors.blue)),
+                          Expanded(child: _trendMetric('Items', itemCount.toString(), Icons.inventory_2_outlined, Colors.orange)),
                         ],
                       ),
                     ],
@@ -250,53 +319,99 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> with SingleTick
       itemCount: widget.sales.length,
       itemBuilder: (context, index) {
         final sale = widget.sales[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(color: Colors.grey.shade100, width: 1),
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16),
-            title: Row(
-              children: [
-                Text(
-                  'K ${(sale.total ?? 0).toStringAsFixed(2)}',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                Text(
-                  sale.date ?? 'Unknown date',
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            subtitle: Column(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.green.shade200),
+                      ),
+                      child: Text(
+                        'K ${(sale.total ?? 0).toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      sale.date ?? 'Unknown date',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
                 if (sale.itemsSold?.isNotEmpty ?? false) ...[
-                  const Divider(),
+                  const SizedBox(height: 16),
+                  Divider(color: Colors.grey.shade200),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Items Sold',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
+                      fontSize: 14,
+                    ),
+                  ),
                   const SizedBox(height: 8),
                   ...sale.itemsSold!.map((item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
+                    padding: const EdgeInsets.only(bottom: 8),
                     child: Row(
                       children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: bluePrimary,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Text(
                             item.name ?? 'Unknown item',
-                            style: const TextStyle(fontSize: 13),
+                            style: const TextStyle(fontSize: 14),
                           ),
                         ),
-                        Text(
-                          '${item.quantity ?? 0}x',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 13,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '${item.quantity ?? 0}x',
+                            style: TextStyle(
+                              color: Colors.grey.shade700,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
                       ],
@@ -329,29 +444,46 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> with SingleTick
 
   Widget _metricCard(String title, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(height: 12),
           Text(
             title,
             style: TextStyle(
               color: Colors.grey.shade700,
-              fontSize: 12,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             value,
             style: const TextStyle(
-              fontSize: 18,
+              fontSize: 20,
               fontWeight: FontWeight.bold,
+              height: 1.1,
             ),
           ),
         ],
@@ -359,25 +491,34 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> with SingleTick
     );
   }
 
-  Widget _trendMetric(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+  Widget _trendMetric(String label, String value, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey.shade600,
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey.shade600,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -387,8 +528,11 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> with SingleTick
       appBar: AppBar(
         title: const Text('Sales Analytics'),
         backgroundColor: bluePrimary,
+        elevation: 0,
         bottom: TabBar(
           controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
           tabs: const [
             Tab(text: 'Overview'),
             Tab(text: 'Trends'),
@@ -396,6 +540,7 @@ class _SalesAnalyticsPageState extends State<SalesAnalyticsPage> with SingleTick
           ],
         ),
       ),
+      backgroundColor: const Color(0xFFF5F6FA),
       body: TabBarView(
         controller: _tabController,
         children: [
