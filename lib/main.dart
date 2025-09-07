@@ -20,5 +20,11 @@ void main() async {
     final dir = await getApplicationDocumentsDirectory();
     Hive.init(dir.path);
   }
-   runApp(const MyApp());
+   runApp(
+    ShowCaseWidget(
+      builder: Builder(
+        builder: (context) => const MyApp(),
+      ),
+    ),
+  );
 }

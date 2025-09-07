@@ -31,12 +31,12 @@ class RootPage extends StatefulWidget {
 }
 
 class _RootPageState extends State<RootPage> {
-  final _fabKey = GlobalKey();
-  final _navHomeKey = GlobalKey();
-  final _navInventoryKey = GlobalKey();
-  final _navSalesHistKey = GlobalKey();
-  final _navMoreKey = GlobalKey();
-  final _navSettingsKey = GlobalKey();
+  static final GlobalKey _fabKey = GlobalKey();
+  static final GlobalKey _navHomeKey = GlobalKey();
+  static final GlobalKey _navInventoryKey = GlobalKey();
+  static final GlobalKey _navSalesHistKey = GlobalKey();
+  static final GlobalKey _navMoreKey = GlobalKey();
+  static final GlobalKey _navSettingsKey = GlobalKey();
   bool _tutorialStarted = false;
   bool _isTutorialPending = true;
 

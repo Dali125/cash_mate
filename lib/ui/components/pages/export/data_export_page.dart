@@ -246,96 +246,171 @@ class _DataExportPageState extends State<DataExportPage> {
     required ValueChanged<bool> onChanged,
     IconData? icon,
   }) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: value ? bluePrimary.withOpacity(0.3) : Colors.grey.shade200,
+          width: value ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: icon != null
-            ? CircleAvatar(
-                backgroundColor: bluePrimary.withOpacity(0.1),
-                child: Icon(icon, color: bluePrimary),
+            ? Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: value ? bluePrimary.withOpacity(0.1) : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  color: value ? bluePrimary : Colors.grey.shade600,
+                  size: 24,
+                ),
               )
             : null,
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.grey.shade600)),
-        trailing: Switch(
-          value: value,
-          onChanged: onChanged,
-          activeColor: bluePrimary,
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+            color: value ? bluePrimary : Colors.grey.shade800,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            color: Colors.grey.shade600,
+            fontSize: 14,
+            height: 1.3,
+          ),
+        ),
+        trailing: Transform.scale(
+          scale: 1.1,
+          child: Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: bluePrimary,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildDateRangeCard() {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: bluePrimary.withOpacity(0.1),
-                  child: Icon(Icons.date_range, color: bluePrimary),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: bluePrimary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                const SizedBox(width: 12),
-                const Text(
-                  'Export Date Range',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _buildDateChip('All Time', 'all'),
-                _buildDateChip('Last Week', 'week'),
-                _buildDateChip('Last Month', 'month'),
-                _buildDateChip('Last Year', 'year'),
-                _buildDateChip('Custom Range', 'custom'),
-              ],
-            ),
-            if (_dateRange == 'custom') ...[
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _selectDateRange,
-                      icon: const Icon(Icons.calendar_today),
-                      label: Text(
-                        _startDate != null && _endDate != null
-                            ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year} - ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                            : 'Select Date Range',
-                        style: const TextStyle(fontSize: 12),
-                      ),
-                    ),
-                  ),
-                ],
+                child: Icon(Icons.date_range, color: bluePrimary, size: 24),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Export Date Range',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 17),
               ),
             ],
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              _buildDateChip('All Time', 'all'),
+              _buildDateChip('Last Week', 'week'),
+              _buildDateChip('Last Month', 'month'),
+              _buildDateChip('Last Year', 'year'),
+              _buildDateChip('Custom Range', 'custom'),
+            ],
+          ),
+          if (_dateRange == 'custom') ...[
+            const SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _selectDateRange,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: bluePrimary.withOpacity(0.5)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: Icon(Icons.calendar_today, color: bluePrimary),
+                label: Text(
+                  _startDate != null && _endDate != null
+                      ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year} - ${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                      : 'Select Date Range',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: bluePrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
           ],
-        ),
+        ],
       ),
     );
   }
 
   Widget _buildDateChip(String label, String value) {
     final isSelected = _dateRange == value;
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (selected) {
-        setState(() => _dateRange = value);
-      },
-      selectedColor: bluePrimary.withOpacity(0.2),
-      checkmarkColor: bluePrimary,
+    return InkWell(
+      onTap: () => setState(() => _dateRange = value),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? bluePrimary : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? bluePrimary : Colors.grey.shade300,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey.shade700,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
+      ),
     );
   }
 
@@ -347,17 +422,51 @@ class _DataExportPageState extends State<DataExportPage> {
         backgroundColor: bluePrimary,
         elevation: 0,
       ),
+      backgroundColor: const Color(0xFFF5F6FA),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Export your business data to CSV files for backup, analysis, or sharing with your accountant.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey.shade600,
-                height: 1.4,
+            // Header card with description
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [bluePrimary.withOpacity(0.1), Colors.blue.shade50],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.file_download_outlined, size: 28, color: bluePrimary),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Data Export',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: bluePrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Export your business data to CSV files for backup, analysis, or sharing with your accountant. Choose what data to include and customize your export options.',
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: Colors.grey.shade700,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 24),
@@ -416,7 +525,7 @@ class _DataExportPageState extends State<DataExportPage> {
             
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 60,
               child: ElevatedButton.icon(
                 onPressed: _isExporting ? null : _exportToCSV,
                 style: ElevatedButton.styleFrom(
@@ -424,20 +533,21 @@ class _DataExportPageState extends State<DataExportPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  elevation: 4,
+                  elevation: 6,
+                  shadowColor: bluePrimary.withOpacity(0.3),
                 ),
                 icon: _isExporting
                     ? const SizedBox(
-                        width: 20,
-                        height: 20,
+                        width: 24,
+                        height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : const Icon(Icons.download, color: Colors.white),
+                    : const Icon(Icons.download, color: Colors.white, size: 24),
                 label: Text(
-                  _isExporting ? 'Exporting...' : 'Export to CSV',
+                  _isExporting ? 'Exporting Data...' : 'Export to CSV',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -447,26 +557,41 @@ class _DataExportPageState extends State<DataExportPage> {
               ),
             ),
             
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: Colors.blue.shade50,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.blue.shade200),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, color: Colors.blue.shade700),
-                  const SizedBox(width: 12),
+                  Icon(Icons.info_outline, color: Colors.blue.shade700, size: 24),
+                  const SizedBox(width: 16),
                   Expanded(
-                    child: Text(
-                      'CSV files can be opened in Excel, Google Sheets, or any spreadsheet application for further analysis.',
-                      style: TextStyle(
-                        color: Colors.blue.shade700,
-                        fontSize: 14,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Export Information',
+                          style: TextStyle(
+                            color: Colors.blue.shade800,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'CSV files can be opened in Excel, Google Sheets, or any spreadsheet application for further analysis. Files will be shared through your device\'s sharing options.',
+                          style: TextStyle(
+                            color: Colors.blue.shade700,
+                            fontSize: 14,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],

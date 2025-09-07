@@ -41,28 +41,26 @@ class MyApp extends StatelessWidget {
         final logins = snapshot.data ?? 0;
         final initial = logins > 0 ? '/' : '/welcome_screens';
         
-        return ShowCaseWidget(
-          builder: (context) => GetMaterialApp(
-            title: 'CashApp',
-            theme: ThemeData(
-              colorScheme: ColorScheme.fromSeed(seedColor: bluePrimary),
-            ),
-            initialRoute: initial,
-            routes: {
-              '/': (context) => const RootPage(),
-              '/welcome_screens': (context) => const WelcomeScreens(),
-              '/inventory': (context) => const InventoryPage(),
-              '/add-inventory': (context) => const AddInventoryPage(),
-              '/sales': (context) => SalesPage(),
-              '/edit-inventory': (context) => const EditInventoryPage(),
-              '/inventory-item-overview': (context) => InventoryItemOverview(),
-              '/inventory-tablet': (context) => const InventoryPageTablet(),
-              '/add-inventory-tablet': (context) => const AddInventoryPage(),
-              '/transaction_complete': (context) => TransactionCompletePage(),
-              '/payment_page': (context) => PaymentPage(),
-              '/sales-history-detail': (context) => SalesHistory(),
-            },
+        return GetMaterialApp(
+          title: 'CashApp',
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(seedColor: bluePrimary),
           ),
+          initialRoute: initial,
+          routes: {
+            '/': (context) => const RootPage(),
+            '/welcome_screens': (context) => const WelcomeScreens(),
+            '/inventory': (context) => const InventoryPage(),
+            '/add-inventory': (context) => const AddInventoryPage(),
+            '/sales': (context) => SalesPage(),
+            '/edit-inventory': (context) => const EditInventoryPage(),
+            '/inventory-item-overview': (context) => InventoryItemOverview(),
+            '/inventory-tablet': (context) => const InventoryPageTablet(),
+            '/add-inventory-tablet': (context) => const AddInventoryPage(),
+            '/transaction_complete': (context) => TransactionCompletePage(),
+            '/payment_page': (context) => PaymentPage(),
+            '/sales-history-detail': (context) => SalesHistory(),
+          },
         );
       },
     );

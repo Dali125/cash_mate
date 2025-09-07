@@ -1509,32 +1509,79 @@ class _MoreToolsPageState extends State<MoreToolsPage> {
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: _generating ? null : onTap,
-      child: Ink(
+      child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(.05), blurRadius: 8, offset: const Offset(0, 4)),
+            BoxShadow(color: Colors.black.withOpacity(.06), blurRadius: 12, offset: const Offset(0, 4)),
           ],
+          border: Border.all(color: Colors.grey.shade100, width: 1),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(16.0),
+          padding: const EdgeInsets.all(18.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 26,
-                backgroundColor: c.withOpacity(.15),
-                child: Icon(icon, color: c, size: 26),
+              Container(
+                decoration: BoxDecoration(
+                  color: c.withOpacity(.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                padding: const EdgeInsets.all(14),
+                child: Icon(icon, color: c, size: 28),
               ),
-              const SizedBox(height: 14),
-              Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Expanded(
-                child: Text(description, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  height: 1.2,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              Text('OPEN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: c)),
+              Expanded(
+                child: Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey.shade600,
+                    height: 1.3,
+                  ),
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: c.withOpacity(.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'OPEN',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: c,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 16,
+                    color: Colors.grey.shade400,
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -1548,150 +1595,234 @@ class _MoreToolsPageState extends State<MoreToolsPage> {
     final crossAxisCount = width > 900 ? 4 : width > 650 ? 3 : 2;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('More Tools'),
+        title: const Text('Business Tools'),
         backgroundColor: bluePrimary,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            onPressed: () => Get.snackbar('About', 'CashMate Business Tools v1.0.0'),
+          ),
+        ],
       ),
       backgroundColor: const Color(0xFFF5F6FA),
       body: Stack(
         children: [
-          Padding(
+          SingleChildScrollView(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Utilities & Reports', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: bluePrimary)),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: GridView.count(
-                    crossAxisCount: crossAxisCount,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                    childAspectRatio: 0.95,
+                // Welcome header
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [bluePrimary.withOpacity(0.1), Colors.blue.shade50],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Row(
                     children: [
-                      _toolCard(
-                        title: 'Income Statement',
-                        description: 'Generate & share revenue summary PDF.',
-                        icon: Icons.analytics_outlined,
-                        onTap: _printIncomeStatement,
-                      ),
-                      _toolCard(
-                        title: 'Build Catalog',
-                        description: 'Interactive product catalog builder PDF.',
-                        icon: Icons.inventory_2_outlined,
-                        onTap: _openCatalogBuilder,
-                      ),
-                      _toolCard(
-                        title: 'Export Data',
-                        description: 'Export sales & inventory as CSV.',
-                        icon: Icons.file_download_outlined,
-                        onTap: _exportData,
-                      ),
-                      _toolCard(
-                        title: 'Backup',
-                        description: 'Backup local database (coming soon).',
-                        icon: Icons.cloud_upload_outlined,
-                        onTap: _backupData,
-                      ),
-                      _toolCard(
-                        title: 'Settings',
-                        description: 'Configure app preferences.',
-                        icon: Icons.settings_outlined,
-                        onTap: () => Get.snackbar('Settings', 'Coming soon'),
-                      ),
-                      _toolCard(
-                        title: 'Sales Analytics',
-                        description: 'View sales trends, best-selling items, and revenue insights.',
-                        icon: Icons.trending_up_outlined,
-                        color: Colors.green,
-                        onTap: () => _showSalesAnalytics(),
-                      ),
-                      _toolCard(
-                        title: 'Profit Calculator',
-                        description: 'Calculate profit margins and set optimal prices.',
-                        icon: Icons.calculate_outlined,
-                        color: Colors.orange,
-                        onTap: () => _showProfitCalculator(),
-                      ),
-                      _toolCard(
-                        title: 'Stock Alerts',
-                        description: 'Set low stock alerts and reorder notifications.',
-                        icon: Icons.notification_important_outlined,
-                        color: Colors.red,
-                        onTap: () => _showStockAlerts(),
-                      ),
-                      _toolCard(
-                        title: 'Tax Calculator',
-                        description: 'Calculate taxes and VAT for your business.',
-                        icon: Icons.calculate_outlined,
-                        color: Colors.indigo,
-                        onTap: () => _showTaxCalculator(),
-                      ),
-                      _toolCard(
-                        title: 'Cash Flow',
-                        description: 'Track money in and out of your business.',
-                        icon: Icons.trending_up_outlined,
-                        color: Colors.teal,
-                        onTap: () => _showCashFlow(),
-                      ),
-                      _toolCard(
-                        title: 'Expense Tracker',
-                        description: 'Track and categorize business expenses.',
-                        icon: Icons.receipt_outlined,
-                        color: Colors.brown,
-                        onTap: () => _showExpenseTracker(),
-                      ),
-                      _toolCard(
-                        title: 'Invoice Generator',
-                        description: 'Create professional invoices for customers.',
-                        icon: Icons.description_outlined,
-                        color: Colors.deepOrange,
-                        onTap: () => _showInvoiceGenerator(),
-                      ),
-                      _toolCard(
-                        title: 'Financial Reports',
-                        description: 'Comprehensive financial statements and ratios.',
-                        icon: Icons.assessment_outlined,
-                        color: Colors.deepPurple,
-                        onTap: () => _showFinancialReports(),
-                      ),
-                      _toolCard(
-                        title: 'Break-even Analysis',
-                        description: 'Calculate your break-even point.',
-                        icon: Icons.balance_outlined,
-                        color: Colors.cyan,
-                        onTap: () => _showBreakEvenAnalysis(),
-                      ),
-                      _toolCard(
-                        title: 'Budget Planner',
-                        description: 'Plan and track your business budget.',
-                        icon: Icons.account_balance_wallet_outlined,
-                        color: Colors.amber,
-                        onTap: () => _showBudgetPlanner(),
-                      ),
-                      _toolCard(
-                        title: 'Currency Converter',
-                        description: 'Convert currencies for international sales.',
-                        icon: Icons.currency_exchange_outlined,
-                        color: Colors.lightGreen,
-                        onTap: () => _showCurrencyConverter(),
-                      ),
-                      _toolCard(
-                        title: 'Customer List',
-                        description: 'Manage customer information and purchase history.',
-                        icon: Icons.people_outline,
-                        color: Colors.purple,
-                        onTap: () => _showCustomerList(),
-                      ),
-                      _toolCard(
-                        title: 'About',
-                        description: 'App version & developer info.',
-                        icon: Icons.info_outline,
-                        onTap: () => Get.snackbar('About', 'CashMate v1.0.0'),
+                      Icon(Icons.business, size: 32, color: bluePrimary),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Business Tools & Analytics',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: bluePrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Manage reports, analytics, and financial tools',
+                              style: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(height: 24),
+
+                // Reports & Analytics Section
+                _buildSectionHeader('Reports & Analytics', Icons.analytics_outlined),
+                const SizedBox(height: 12),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.95,
+                  children: [
+                    _toolCard(
+                      title: 'Sales Analytics',
+                      description: 'View sales trends, best-selling items, and revenue insights.',
+                      icon: Icons.trending_up_outlined,
+                      color: Colors.green,
+                      onTap: () => _showSalesAnalytics(),
+                    ),
+                    _toolCard(
+                      title: 'Income Statement',
+                      description: 'Generate & share revenue summary PDF.',
+                      icon: Icons.analytics_outlined,
+                      onTap: _printIncomeStatement,
+                    ),
+                    _toolCard(
+                      title: 'Build Catalog',
+                      description: 'Interactive product catalog builder PDF.',
+                      icon: Icons.inventory_2_outlined,
+                      onTap: _openCatalogBuilder,
+                    ),
+                    _toolCard(
+                      title: 'Export Data',
+                      description: 'Export sales & inventory as CSV files.',
+                      icon: Icons.file_download_outlined,
+                      onTap: _exportData,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Financial Tools Section
+                _buildSectionHeader('Financial Tools', Icons.calculate_outlined),
+                const SizedBox(height: 12),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.95,
+                  children: [
+                    _toolCard(
+                      title: 'Profit Calculator',
+                      description: 'Calculate profit margins and set optimal prices.',
+                      icon: Icons.calculate_outlined,
+                      color: Colors.orange,
+                      onTap: () => _showProfitCalculator(),
+                    ),
+                    _toolCard(
+                      title: 'Tax Calculator',
+                      description: 'Calculate taxes and VAT for your business.',
+                      icon: Icons.receipt_outlined,
+                      color: Colors.indigo,
+                      onTap: () => _showTaxCalculator(),
+                    ),
+                    _toolCard(
+                      title: 'Break-even Analysis',
+                      description: 'Calculate your break-even point.',
+                      icon: Icons.balance_outlined,
+                      color: Colors.cyan,
+                      onTap: () => _showBreakEvenAnalysis(),
+                    ),
+                    _toolCard(
+                      title: 'Currency Converter',
+                      description: 'Convert currencies for international sales.',
+                      icon: Icons.currency_exchange_outlined,
+                      color: Colors.lightGreen,
+                      onTap: () => _showCurrencyConverter(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Business Management Section
+                _buildSectionHeader('Business Management', Icons.business_center_outlined),
+                const SizedBox(height: 12),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.95,
+                  children: [
+                    _toolCard(
+                      title: 'Cash Flow',
+                      description: 'Track money in and out of your business.',
+                      icon: Icons.trending_up_outlined,
+                      color: Colors.teal,
+                      onTap: () => _showCashFlow(),
+                    ),
+                    _toolCard(
+                      title: 'Expense Tracker',
+                      description: 'Track and categorize business expenses.',
+                      icon: Icons.receipt_outlined,
+                      color: Colors.brown,
+                      onTap: () => _showExpenseTracker(),
+                    ),
+                    _toolCard(
+                      title: 'Stock Alerts',
+                      description: 'Set low stock alerts and reorder notifications.',
+                      icon: Icons.notification_important_outlined,
+                      color: Colors.red,
+                      onTap: () => _showStockAlerts(),
+                    ),
+                    _toolCard(
+                      title: 'Budget Planner',
+                      description: 'Plan and track your business budget.',
+                      icon: Icons.account_balance_wallet_outlined,
+                      color: Colors.amber,
+                      onTap: () => _showBudgetPlanner(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+
+                // Coming Soon Section
+                _buildSectionHeader('Coming Soon', Icons.upcoming_outlined),
+                const SizedBox(height: 12),
+                GridView.count(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
+                  childAspectRatio: 0.95,
+                  children: [
+                    _toolCard(
+                      title: 'Invoice Generator',
+                      description: 'Create professional invoices for customers.',
+                      icon: Icons.description_outlined,
+                      color: Colors.deepOrange,
+                      onTap: () => _showInvoiceGenerator(),
+                    ),
+                    _toolCard(
+                      title: 'Financial Reports',
+                      description: 'Comprehensive financial statements and ratios.',
+                      icon: Icons.assessment_outlined,
+                      color: Colors.deepPurple,
+                      onTap: () => _showFinancialReports(),
+                    ),
+                    _toolCard(
+                      title: 'Customer List',
+                      description: 'Manage customer information and purchase history.',
+                      icon: Icons.people_outline,
+                      color: Colors.purple,
+                      onTap: () => _showCustomerList(),
+                    ),
+                    _toolCard(
+                      title: 'Backup',
+                      description: 'Backup local database (coming soon).',
+                      icon: Icons.cloud_upload_outlined,
+                      onTap: _backupData,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -1700,10 +1831,38 @@ class _MoreToolsPageState extends State<MoreToolsPage> {
               color: Colors.black.withOpacity(.25),
               child: const Center(
                 child: CircularProgressIndicator(),
+              ),
             ),
-          ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: bluePrimary, size: 24),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: bluePrimary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [bluePrimary.withOpacity(0.3), Colors.transparent],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }class _CatalogPreviewPage extends StatelessWidget {
