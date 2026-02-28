@@ -5,18 +5,22 @@ part 'inventort.g.dart'; // Required for Hive's type adapter generation
 @HiveType(typeId: 0)
 class Item extends HiveObject {
   @HiveField(0)
-  String name;
+  int id;
 
   @HiveField(1)
-  double price;
+  String name;
 
   @HiveField(2)
+  double price;
+
+  @HiveField(3)
   int quantity;
 
   @HiveField(4)
   String imageUrl;
 
   Item({
+    this.id = 0,
     required this.name,
     required this.price,
     required this.quantity,
@@ -26,6 +30,7 @@ class Item extends HiveObject {
   /// Convert Item object to JSON
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'name': name,
       'price': price,
       'quantity': quantity,
@@ -36,6 +41,7 @@ class Item extends HiveObject {
   /// Create an Item from JSON
   factory Item.fromJson(Map<String, dynamic> json) {
     return Item(
+      id: json['id'] ?? 0,
       name: json['name'] ?? '',
       price: json['price']?.toDouble() ?? 0.0,
       quantity: json['quantity'] ?? 0,

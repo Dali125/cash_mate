@@ -1,8 +1,5 @@
 import 'dart:io';
 import 'package:cash_app/db/config.dart';
-import 'package:cash_app/main.dart';
-import 'package:cash_app/services/device_properties.dart';
-import 'package:cash_app/ui/components/button.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -15,17 +12,12 @@ class InventoryPageTablet extends StatefulWidget {
 }
 
 class _InventoryPageTabletState extends State<InventoryPageTablet> {
-  final ScrollController _scrollController = ScrollController();
-  final TextEditingController _searchController = TextEditingController();
   final double _cardWidth = 300; // Fixed width for grid items
-
-
 
   @override
   Widget build(BuildContext context) {
     final inventoryDB = Get.find<Config>();
     inventoryDB.initDatabase();
-
 
     return Scaffold(
       appBar: AppBar(
@@ -98,7 +90,6 @@ class _InventoryPageTabletState extends State<InventoryPageTablet> {
             FutureBuilder(
               future: inventoryDB.getInventory(),
               builder: (context, snapshot) {
-
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
                 } else if (snapshot.hasError) {

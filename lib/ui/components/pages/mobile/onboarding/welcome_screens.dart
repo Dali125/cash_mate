@@ -1,19 +1,13 @@
+import 'package:cash_app/db/config.dart';
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:concentric_transition/concentric_transition.dart';
 
-class WelcomeScreens extends StatefulWidget {
+class WelcomeScreens extends StatelessWidget {
   const WelcomeScreens({super.key});
-
-  @override
-  State<WelcomeScreens> createState() => _WelcomeScreensState();
-}
-
-class _WelcomeScreensState extends State<WelcomeScreens> {
   @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: OnboardingExample(),
-    );
+    return const OnboardingExample();
   }
 }
 
@@ -22,7 +16,8 @@ final pages = [
     image_url: "assets/screen_1.png",
     icon: Icons.bubble_chart,
     title: "Welcome to \nCashMate",
-    body: 'Track sales, manage stock, and grow your business—all in one easy-to-use app.',
+    body:
+        'Track sales, manage stock, and grow your business—all in one easy-to-use app.',
     bgColor: Color(0xFF0043D0),
     textColor: Colors.white,
   ),
@@ -30,7 +25,8 @@ final pages = [
     image_url: "assets/screen_2.png",
     icon: Icons.format_size,
     title: "Inventory & Sales",
-    body: 'Effortlessly record sales and monitor inventory levels in real time.',
+    body:
+        'Effortlessly record sales and monitor inventory levels in real time.',
     textColor: Colors.white,
     bgColor: Color(0xFFFDBFDD),
   ),
@@ -53,7 +49,9 @@ final pages = [
 class OnboardingExample extends StatelessWidget {
   const OnboardingExample({Key? key}) : super(key: key);
 
-  void _finish(BuildContext context) {
+  void _finish(BuildContext context) async {
+    final db = Get.find<Config>();
+    await db.updateNumberOfLogins();
     Navigator.pushReplacementNamed(context, '/');
   }
 
@@ -79,7 +77,10 @@ class OnboardingExample extends StatelessWidget {
               final page = pages[index % pages.length];
               final isLast = index == pages.length - 1;
               return SafeArea(
-                child: _Page(page: page, isLast: isLast, onFinish: () => _finish(context)),
+                child: _Page(
+                    page: page,
+                    isLast: isLast,
+                    onFinish: () => _finish(context)),
               );
             },
           ),
@@ -122,7 +123,12 @@ class _Page extends StatelessWidget {
   final bool isLast;
   final VoidCallback onFinish;
 
-  const _Page({Key? key, required this.page, required this.isLast, required this.onFinish}) : super(key: key);
+  const _Page(
+      {Key? key,
+      required this.page,
+      required this.isLast,
+      required this.onFinish})
+      : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -163,10 +169,15 @@ class _Page extends StatelessWidget {
               width: double.infinity,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: page.textColor.computeLuminance() > 0.5 ? Colors.black : Colors.white,
-                  foregroundColor: page.textColor.computeLuminance() > 0.5 ? Colors.white : Colors.black,
+                  backgroundColor: page.textColor.computeLuminance() > 0.5
+                      ? Colors.black
+                      : Colors.white,
+                  foregroundColor: page.textColor.computeLuminance() > 0.5
+                      ? Colors.white
+                      : Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: onFinish,
                 child: const Text('Get Started'),

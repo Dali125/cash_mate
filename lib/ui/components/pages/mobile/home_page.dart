@@ -3,9 +3,10 @@ import 'dart:core';
 
 import 'package:cash_app/controllers/page_controller.dart';
 import 'package:cash_app/db/config.dart';
-import 'package:cash_app/ui/components/pages/sales_page.dart';
+import 'package:cash_app/ui/components/pages/mobile/sales_page.dart';
 import 'package:cash_app/ui/components/pages/analytics/sales_analytics_page.dart';
 import 'package:cash_app/models/sales_model.dart';
+import 'package:cash_app/ui/components/pages/mobile/splash_screen/sales_history_page.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -64,7 +65,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-    final crossAxisCount = width > 680 ? 4 : width > 520 ? 3 : 2;
+    final crossAxisCount = width > 680
+        ? 4
+        : width > 520
+            ? 3
+            : 2;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
@@ -84,12 +89,13 @@ class _HomePageState extends State<HomePage> {
       body: RefreshIndicator(
         onRefresh: refreshSummary,
         child: FutureBuilder<Map<String, dynamic>>(
-          future: salesSummary,
+            future: salesSummary,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               } else if (snapshot.hasError) {
-                return ListView( // to enable pull-to-refresh
+                return ListView(
+                  // to enable pull-to-refresh
                   children: [
                     SizedBox(height: MediaQuery.of(context).size.height * .3),
                     Center(child: Text('Error: ${snapshot.error}')),
@@ -116,7 +122,8 @@ class _HomePageState extends State<HomePage> {
                 ),
                 _StatItem(
                   label: "Today's Revenue",
-                  value: "K ${data["today_revenue"]}",
+                  value:
+                      "K ${(data["today_revenue"] as num).toStringAsFixed(2)}",
                   icon: Icons.payments,
                   gradient: [Colors.purpleAccent, bluePrimary],
                 ),
@@ -128,7 +135,7 @@ class _HomePageState extends State<HomePage> {
                 ),
                 _StatItem(
                   label: "All-time Revenue",
-                  value: "K ${data["total_sales"]}",
+                  value: "K ${(data["total_sales"] as num).toStringAsFixed(2)}",
                   icon: Icons.attach_money,
                   gradient: [Colors.green, Colors.teal],
                 ),
@@ -198,7 +205,7 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  
+
                   // Quick Actions
                   SliverToBoxAdapter(
                     child: Padding(
@@ -244,8 +251,10 @@ class _HomePageState extends State<HomePage> {
                                   icon: Icons.analytics,
                                   color: Colors.purple,
                                   onTap: () async {
-                                    final sales = await _fetchSalesForAnalytics();
-                                    Get.to(() => SalesAnalyticsPage(sales: sales));
+                                    final sales =
+                                        await _fetchSalesForAnalytics();
+                                    Get.to(
+                                        () => SalesAnalyticsPage(sales: sales));
                                   },
                                 ),
                               ),
@@ -255,13 +264,14 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ),
-                  
+
                   // Low Stock Alert
                   SliverToBoxAdapter(
                     child: FutureBuilder<List<Map<String, dynamic>>>(
                       future: getLowStockItems(),
                       builder: (context, lowStockSnapshot) {
-                        if (lowStockSnapshot.hasData && lowStockSnapshot.data!.isNotEmpty) {
+                        if (lowStockSnapshot.hasData &&
+                            lowStockSnapshot.data!.isNotEmpty) {
                           return Container(
                             margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                             padding: const EdgeInsets.all(16),
@@ -275,7 +285,8 @@ class _HomePageState extends State<HomePage> {
                               children: [
                                 Row(
                                   children: [
-                                    Icon(Icons.warning_amber, color: Colors.orange.shade700),
+                                    Icon(Icons.warning_amber,
+                                        color: Colors.orange.shade700),
                                     const SizedBox(width: 8),
                                     Text(
                                       'Low Stock Alert',
@@ -289,28 +300,31 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 const SizedBox(height: 8),
                                 ...lowStockSnapshot.data!.map((item) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          item['name']?.toString() ?? 'Unknown',
-                                          style: TextStyle(color: Colors.grey.shade700),
-                                        ),
+                                      padding: const EdgeInsets.only(bottom: 4),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              item['name']?.toString() ??
+                                                  'Unknown',
+                                              style: TextStyle(
+                                                  color: Colors.grey.shade700),
+                                            ),
+                                          ),
+                                          Text(
+                                            '${item['quantity']} left',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.orange.shade700,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      Text(
-                                        '${item['quantity']} left',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.orange.shade700,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                )),
+                                    )),
                                 const SizedBox(height: 8),
                                 TextButton(
-                                  onPressed: () => pc.changePage(1), // Go to inventory
+                                  onPressed: () =>
+                                      pc.changePage(1), // Go to inventory
                                   child: const Text('Manage Inventory'),
                                 ),
                               ],
@@ -336,7 +350,8 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     sliver: SliverGrid(
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossAxisCount,
@@ -368,9 +383,9 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           TextButton(
-                            onPressed: () => pc.changePage(2),
+                            onPressed: () => {Get.to(SalesHistoryPage())},
                             child: const Text("View All"),
-                          ),
+                          )
                         ],
                       ),
                     ),
@@ -395,20 +410,24 @@ class _HomePageState extends State<HomePage> {
     try {
       final raw = await db.getSalesHistory();
       if (raw == null) return [];
-      return raw.map((m) => SalesModel(
-        date: m['date'] as String?,
-        total: (m['amount'] as num?)?.toDouble(),
-        itemsSold: [], // not reconstructing detailed items from text blob
-        transactionType: m['transaction_type'] as String?,
-      )).toList();
+      return raw
+          .map((m) => SalesModel(
+                date: m['date'] as String?,
+                total: (m['amount'] as num?)?.toDouble(),
+                itemsSold: [], // not reconstructing detailed items from text blob
+                transactionType: m['transaction_type'] as String?,
+              ))
+          .toList();
     } catch (_) {
       return [];
     }
   }
 
   // Legacy functions kept only if referenced elsewhere
-  Widget buildSalesTable(String salesSummaryString) { // retained for compatibility (unused in new layout)
-    List<dynamic>? salesSummary = jsonDecode(salesSummaryString)['recent_sales'];
+  Widget buildSalesTable(String salesSummaryString) {
+    // retained for compatibility (unused in new layout)
+    List<dynamic>? salesSummary =
+        jsonDecode(salesSummaryString)['recent_sales'];
     if (salesSummary == null) {
       return const Center(child: Text('No recent sales available'));
     }
@@ -437,7 +456,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget tableHeader(String text) { // unchanged helper
+  Widget tableHeader(String text) {
+    // unchanged helper
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Text(
@@ -448,7 +468,8 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget tableCell(String text) { // unchanged helper
+  Widget tableCell(String text) {
+    // unchanged helper
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Text(text, textAlign: TextAlign.center),
@@ -522,7 +543,11 @@ class _StatItem {
   final String value;
   final IconData icon;
   final List<Color> gradient;
-  _StatItem({required this.label, required this.value, required this.icon, required this.gradient});
+  _StatItem(
+      {required this.label,
+      required this.value,
+      required this.icon,
+      required this.gradient});
 }
 
 class _RecentTransactionsCard extends StatelessWidget {
@@ -531,7 +556,8 @@ class _RecentTransactionsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<dynamic>? salesSummary = jsonDecode(salesSummaryString)['recent_sales'];
+    final List<dynamic>? salesSummary =
+        jsonDecode(salesSummaryString)['recent_sales'];
     if (salesSummary == null || salesSummary.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(24),
@@ -555,16 +581,16 @@ class _RecentTransactionsCard extends StatelessWidget {
   }
 
   BoxDecoration _cardDecoration(BuildContext context) => BoxDecoration(
-    color: Colors.white,
-    borderRadius: BorderRadius.circular(18),
-    boxShadow: [
-      BoxShadow(
-        color: Colors.black.withOpacity(.05),
-        blurRadius: 12,
-        offset: const Offset(0, 6),
-      )
-    ],
-  );
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          )
+        ],
+      );
 }
 
 class _TransactionTile extends StatelessWidget {
@@ -592,7 +618,7 @@ class _TransactionTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           Text(
-            "K${record["amount"]}",
+            "K${(record["amount"] as num).toStringAsFixed(2)}",
             style: TextStyle(
               color: Colors.green.shade600,
               fontWeight: FontWeight.bold,

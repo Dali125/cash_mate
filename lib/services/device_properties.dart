@@ -10,10 +10,10 @@ class DeviceProperties {
   }
 
   bool isTablet(BuildContext context) {
-    return MediaQuery.sizeOf(context).width > 600;
+    return MediaQuery.sizeOf(context).width > 800;
   }
 
-  bool isDesktop(BuildContext context){
-    return MediaQuery.sizeOf(context).width > 600;
+  bool isDesktop(BuildContext context) {
+    return MediaQuery.sizeOf(context).width > 1200;
   }
 }

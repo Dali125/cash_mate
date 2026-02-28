@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:cash_app/controllers/inventory_controller.dart';
+import 'package:cash_app/controllers/page_controller.dart';
 import 'package:cash_app/db/config.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
@@ -15,33 +17,24 @@ class _InventoryPageState extends State<InventoryPage>
     with SingleTickerProviderStateMixin {
   final ScrollController _scrollController = ScrollController();
   final TextEditingController _searchController = TextEditingController();
-  late Future<List<Map<String, dynamic>>?> _inventoryFuture;
+  final inventoryController = Get.find<InventoryController>();
+  final pc = Get.find<PageControllers>();
   late AnimationController _anim;
 
   @override
   void initState() {
     super.initState();
-    final inventoryDB = Get.find<Config>();
-    inventoryDB.initDatabase();
-    _inventoryFuture = inventoryDB.getInventory();
     _anim = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 600));
   }
 
   Future<void> _refresh() async {
-    final inventoryDB = Get.find<Config>();
-    final f = inventoryDB.getInventory(searchQuery: _searchController.text.trim());
-    setState(() {
-      _inventoryFuture = f;
-    });
-    await f;
+    await inventoryController.fetchInventory(
+        query: _searchController.text.trim());
   }
 
   void _onSearchChanged(String val) {
-    final inventoryDB = Get.find<Config>();
-    setState(() {
-      _inventoryFuture = inventoryDB.getInventory(searchQuery: val.trim());
-    });
+    inventoryController.fetchInventory(query: val.trim());
   }
 
   @override
@@ -61,16 +54,10 @@ class _InventoryPageState extends State<InventoryPage>
         backgroundColor: Colors.white,
         title: Text('Inventory',
             style: TextStyle(
-                fontSize: 26,
-                color: bluePrimary,
-                fontWeight: FontWeight.bold)),
+                fontSize: 26, color: bluePrimary, fontWeight: FontWeight.bold)),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => Get.toNamed('/add-inventory'),
-        backgroundColor: bluePrimary,
-        icon: const Icon(Icons.add),
-        label: const Text('Add'),
-      ),
+      // ExpandableFab moved to RootPage
+
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: CustomScrollView(
@@ -80,15 +67,14 @@ class _InventoryPageState extends State<InventoryPage>
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: _SearchField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged),
+                    controller: _searchController, onChanged: _onSearchChanged),
               ),
             ),
             SliverToBoxAdapter(child: const SizedBox(height: 8)),
-            FutureBuilder<List<Map<String, dynamic>>?>(
-              future: _inventoryFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
+            Obx(
+              () {
+                if (inventoryController.isLoading.value &&
+                    inventoryController.mainInventoryList.isEmpty) {
                   return SliverList(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) => _SkeletonCard(index: index),
@@ -96,17 +82,9 @@ class _InventoryPageState extends State<InventoryPage>
                     ),
                   );
                 }
-                if (snapshot.hasError) {
-                  return SliverToBoxAdapter(
-                    child: _CenteredMessage(
-                      icon: Icons.error_outline,
-                      text: 'Error: ${snapshot.error}',
-                      color: Colors.redAccent,
-                    ),
-                  );
-                }
-                final data = snapshot.data;
-                if (data == null || data.isEmpty) {
+
+                final data = inventoryController.mainInventoryList;
+                if (data.isEmpty) {
                   return SliverToBoxAdapter(
                     child: _CenteredMessage(
                       icon: Icons.inventory_2_outlined,
@@ -145,8 +123,7 @@ class _InventoryPageState extends State<InventoryPage>
 class _SearchField extends StatelessWidget {
   final TextEditingController controller;
   final ValueChanged<String> onChanged;
-  const _SearchField(
-      {required this.controller, required this.onChanged});
+  const _SearchField({required this.controller, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -180,12 +157,14 @@ class _SearchField extends StatelessWidget {
 class _InventoryCard extends StatelessWidget {
   final Map<String, dynamic> itemData;
   final Animation<double> animation;
-  const _InventoryCard(
-      {required this.itemData, required this.animation});
+  const _InventoryCard({required this.itemData, required this.animation});
 
   @override
   Widget build(BuildContext context) {
     final imagePath = itemData['image_url'] ?? '';
+    final dynamic rawPrice = itemData['price'];
+    final num? parsedPrice =
+        rawPrice is num ? rawPrice : num.tryParse(rawPrice?.toString() ?? '');
     return FadeTransition(
       opacity: animation,
       child: SlideTransition(
@@ -199,8 +178,8 @@ class _InventoryCard extends StatelessWidget {
             color: Colors.white,
             child: InkWell(
               borderRadius: BorderRadius.circular(22),
-              onTap: () => Get.toNamed('/inventory-item-overview',
-                  arguments: itemData),
+              onTap: () =>
+                  Get.toNamed('/inventory-item-overview', arguments: itemData),
               child: Padding(
                 padding: const EdgeInsets.all(14.0),
                 child: Row(
@@ -241,7 +220,9 @@ class _InventoryCard extends StatelessWidget {
                             spacing: 10,
                             runSpacing: 6,
                             children: [
-                              _Chip(label: 'Price: K ${itemData['price']}'),
+                              _Chip(
+                                  label:
+                                      'Price: K ${parsedPrice?.toStringAsFixed(2) ?? '--'}'),
                               _Chip(label: 'Qty: ${itemData['quantity']}'),
                             ],
                           ),
@@ -256,8 +237,8 @@ class _InventoryCard extends StatelessWidget {
                         IconButton(
                           tooltip: 'Edit',
                           icon: Icon(Icons.edit_outlined, color: blueSecondary),
-                          onPressed: () =>
-                              Get.toNamed('/edit-inventory', arguments: itemData),
+                          onPressed: () => Get.toNamed('/edit-inventory',
+                              arguments: itemData),
                         ),
                         IconButton(
                           tooltip: 'Delete',
@@ -297,8 +278,7 @@ class _Chip extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       child: Text(label,
-          style: const TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w500)),
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
     );
   }
 }
@@ -307,8 +287,7 @@ class _CenteredMessage extends StatelessWidget {
   final IconData icon;
   final String text;
   final Color? color;
-  const _CenteredMessage(
-      {required this.icon, required this.text, this.color});
+  const _CenteredMessage({required this.icon, required this.text, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -343,7 +322,9 @@ class _DeleteDialog extends StatelessWidget {
             child: const Text('Cancel')),
         TextButton(
           onPressed: () async {
+            final inventoryController = Get.find<InventoryController>();
             await inventoryDB.deleteInventory(itemData['id'] as int);
+            await inventoryController.fetchInventory();
             Navigator.pop(context);
             // Trigger refresh via Get.back result or stateful parent refresh
             if (context.mounted) {
@@ -351,8 +332,8 @@ class _DeleteDialog extends StatelessWidget {
                   .showSnackBar(const SnackBar(content: Text('Item deleted')));
             }
           },
-          child: const Text('Delete',
-              style: TextStyle(color: Colors.redAccent)),
+          child:
+              const Text('Delete', style: TextStyle(color: Colors.redAccent)),
         ),
       ],
     );
@@ -380,7 +361,10 @@ class ShimmerWidget extends StatefulWidget {
   final double width;
   final Duration delay;
   const ShimmerWidget(
-      {super.key, required this.height, required this.width, required this.delay});
+      {super.key,
+      required this.height,
+      required this.width,
+      required this.delay});
 
   @override
   State<ShimmerWidget> createState() => _ShimmerWidgetState();

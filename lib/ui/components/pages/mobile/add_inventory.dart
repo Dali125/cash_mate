@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:cash_app/controllers/inventory_controller.dart';
 import 'package:cash_app/controllers/media_controller.dart';
 import 'package:cash_app/db/config.dart';
 import 'package:cash_app/models/inventort.dart';
@@ -15,6 +16,7 @@ class AddInventoryPage extends StatefulWidget {
 }
 
 class _AddInventoryPageState extends State<AddInventoryPage> {
+  final inventoryController = Get.find<InventoryController>();
   TextEditingController itemName = TextEditingController();
   TextEditingController price = TextEditingController();
   TextEditingController quantity = TextEditingController();
@@ -29,7 +31,8 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: bluePrimary.withOpacity(.25)),
@@ -56,9 +59,10 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
         imageUrl: imagePath.text.trim(),
       );
       await db.addInventory(myItem);
+      await inventoryController.fetchInventory();
       Get.snackbar('Success', 'Inventory added successfully',
           snackPosition: SnackPosition.BOTTOM);
-      Get.offAllNamed('/');
+      Get.back(result: true);
     } catch (e) {
       Get.snackbar('Error', 'Failed: $e',
           backgroundColor: Colors.redAccent, colorText: Colors.white);
@@ -81,20 +85,20 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
           onPressed: () => Get.back(),
         ),
         title: Text('Add Inventory',
-            style: TextStyle(
-                color: bluePrimary, fontWeight: FontWeight.bold)),
+            style: TextStyle(color: bluePrimary, fontWeight: FontWeight.bold)),
       ),
       body: Form(
         key: _formKey,
-        autovalidateMode: _showValidationErrors ? AutovalidateMode.always : AutovalidateMode.disabled,
+        autovalidateMode: _showValidationErrors
+            ? AutovalidateMode.always
+            : AutovalidateMode.disabled,
         child: LayoutBuilder(
           builder: (context, constraints) {
             Widget fields = Column(
               children: [
                 TextFormField(
                   controller: itemName,
-                  decoration:
-                      _dec('Product Name', Icons.inventory_2_outlined),
+                  decoration: _dec('Product Name', Icons.inventory_2_outlined),
                   textInputAction: TextInputAction.next,
                   validator: (v) =>
                       v == null || v.trim().isEmpty ? 'Required' : null,
@@ -107,8 +111,8 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                         controller: price,
                         decoration:
                             _dec('Price (K)', Icons.attach_money_rounded),
-                        keyboardType:
-                            const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
                         inputFormatters: [
                           FilteringTextInputFormatter.allow(
                               RegExp(r'^[0-9]*[.]?[0-9]{0,2}'))
@@ -128,7 +132,9 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                         controller: quantity,
                         decoration: _dec('Quantity', Icons.numbers_rounded),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Required';
                           final val = int.tryParse(v);
@@ -147,7 +153,6 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
               duration: const Duration(milliseconds: 300),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-       
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: Colors.grey.shade300),
               ),
@@ -163,11 +168,15 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                         width: double.infinity,
                         color: Colors.white,
                         child: imagePath.text.isEmpty
-                            ? Icon(Icons.image_outlined, size: 64, color: Colors.grey.shade400)
+                            ? Icon(Icons.image_outlined,
+                                size: 64, color: Colors.grey.shade400)
                             : Image.file(
                                 File(imagePath.text),
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Icon(Icons.broken_image_outlined, size: 64, color: Colors.redAccent),
+                                errorBuilder: (_, __, ___) => Icon(
+                                    Icons.broken_image_outlined,
+                                    size: 64,
+                                    color: Colors.redAccent),
                               ),
                       ),
                     ),
@@ -179,7 +188,8 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                       Column(
                         children: [
                           IconButton(
-                            icon: Icon(Icons.photo_library, color: blueSecondary, size: 32),
+                            icon: Icon(Icons.photo_library,
+                                color: blueSecondary, size: 32),
                             onPressed: () async {
                               final image = await mc.pickImage();
                               if (image != null) {
@@ -189,14 +199,17 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                               }
                             },
                           ),
-                          Text('Gallery', style: TextStyle(fontSize: 12, color: Colors.black)),
+                          Text('Gallery',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.black)),
                         ],
                       ),
                       const SizedBox(width: 32),
                       Column(
                         children: [
                           IconButton(
-                            icon: Icon(Icons.camera_alt, color: blueSecondary, size: 32),
+                            icon: Icon(Icons.camera_alt,
+                                color: blueSecondary, size: 32),
                             onPressed: () async {
                               final image = await mc.takeImageFromCamera();
                               if (image != null) {
@@ -206,22 +219,35 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                               }
                             },
                           ),
-                          Text('Camera', style: TextStyle(fontSize: 12, color: Colors.black)),
+                          Text('Camera',
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.black)),
                         ],
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    imagePath.text.isEmpty ? 'Choose image from gallery or take a photo' : 'Image selected',
-                    style: TextStyle(fontSize: 12, color: imagePath.text.isEmpty ? Colors.black : Colors.green),
+                    imagePath.text.isEmpty
+                        ? 'Choose image from gallery or take a photo'
+                        : 'Image selected',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: imagePath.text.isEmpty
+                            ? Colors.black
+                            : Colors.green),
                   ),
                 ],
               ),
             );
 
             return RefreshIndicator(
-              onRefresh: () async { itemName.clear(); price.clear(); quantity.clear(); imagePath.clear(); },
+              onRefresh: () async {
+                itemName.clear();
+                price.clear();
+                quantity.clear();
+                imagePath.clear();
+              },
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(18, 16, 18, 70),
@@ -269,14 +295,20 @@ class _AddInventoryPageState extends State<AddInventoryPage> {
                               child: ElevatedButton.icon(
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: bluePrimary,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16)),
                                   elevation: 4,
                                 ),
                                 icon: const Icon(Icons.save_outlined),
-                                label: const Text('Save Item', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.white)),
+                                label: const Text('Save Item',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white)),
                                 onPressed: () {
                                   if (!_formKey.currentState!.validate()) {
-                                    setState(() => _showValidationErrors = true);
+                                    setState(
+                                        () => _showValidationErrors = true);
                                     return;
                                   }
                                   _submit();

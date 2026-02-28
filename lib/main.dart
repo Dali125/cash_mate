@@ -1,30 +1,24 @@
-
-import 'dart:io';
-
 import 'package:cash_app/app.dart';
-
+import 'package:cash_app/dependancy_injection/di.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:hive_flutter/adapters.dart';
-
-import 'package:path_provider/path_provider.dart';
-import 'package:showcaseview/showcaseview.dart';
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+  await Hive.initFlutter();
 
-  if (Platform.isWindows){
-    WidgetsFlutterBinding.ensureInitialized();
-    final dir = await getApplicationDocumentsDirectory();
-    Hive.init(dir.path);
+  final DependanctInjection di = DependanctInjection();
+  if (!kIsWeb) {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.portraitDown,
+    ]);
   }
-   runApp(
-    ShowCaseWidget(
-      builder: Builder(
-        builder: (context) => const MyApp(),
-      ),
-    ),
+  di.init();
+
+  runApp(
+    const MyApp(),
   );
 }

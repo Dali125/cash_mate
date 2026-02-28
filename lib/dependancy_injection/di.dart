@@ -3,11 +3,12 @@ import 'package:cash_app/controllers/inventory_controller.dart';
 import 'package:cash_app/controllers/media_controller.dart';
 import 'package:cash_app/controllers/onboarding_controller.dart';
 import 'package:cash_app/controllers/page_controller.dart';
+import 'package:cash_app/controllers/payment_controller.dart';
 import 'package:cash_app/db/config.dart';
 import 'package:get/get.dart';
 
 class DependanctInjection {
-  init() {
+  void init() {
     //All Dependancies to be enabled here
 
     //Controllers
@@ -17,7 +18,6 @@ class DependanctInjection {
     Get.put(Config());
     Get.put(MediaController());
     Get.put(InventoryController());
-
-    //
+    Get.put(PaymentController());
   }
 }

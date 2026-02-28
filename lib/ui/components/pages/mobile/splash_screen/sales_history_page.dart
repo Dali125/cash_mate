@@ -43,6 +43,7 @@ class SalesHistoryPage extends StatelessWidget {
               itemCount: salesHistory.length,
               itemBuilder: (context, index) {
                 final sale = salesHistory[index];
+
                 return Card(
                   elevation: 3,
                   shape: RoundedRectangleBorder(
@@ -63,12 +64,16 @@ class SalesHistoryPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Date: ${{ DateTime.parse( sale['date']).toLocal().toString()}}',
-                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                          'Date: ${{
+                            DateTime.parse(sale['date']).toLocal().toString()
+                          }}',
+                          style:
+                              const TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                         Text(
                           'Transaction Type: ${sale['transaction_type'] ?? 'N/A'}',
-                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                          style:
+                              const TextStyle(fontSize: 14, color: Colors.grey),
                         ),
                       ],
                     ),

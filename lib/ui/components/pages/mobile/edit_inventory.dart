@@ -1,3 +1,4 @@
+import 'package:cash_app/controllers/inventory_controller.dart';
 import 'package:cash_app/controllers/media_controller.dart';
 import 'package:cash_app/db/config.dart';
 import 'package:cash_app/services/device_properties.dart';
@@ -8,7 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../models/inventort.dart';
+import '../../../../models/inventort.dart';
 
 class EditInventoryPage extends StatefulWidget {
   const EditInventoryPage({Key? key}) : super(key: key);
@@ -25,12 +26,16 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
   bool _saving = false;
   late dynamic id;
 
+  final db = Get.find<Config>();
+  final inventoryController = Get.find<InventoryController>();
+
   InputDecoration _dec(String hint, IconData icon) => InputDecoration(
         prefixIcon: Icon(icon, color: blueSecondary),
         hintText: hint,
         filled: true,
         fillColor: Colors.white,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: bluePrimary.withOpacity(.25)),
@@ -60,7 +65,6 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final db = Get.find<Config>();
       Item myItem = Item(
         name: itemName.text.trim(),
         price: double.parse(price.text.trim()),
@@ -68,10 +72,20 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
         imageUrl: imagePath.text.trim(),
       );
       await db.updateInventory(id, myItem);
-      Get.snackbar('Success', 'Inventory updated successfully', snackPosition: SnackPosition.BOTTOM);
-      Get.offAllNamed('/');
+
+      // Refresh inventory in background - don't await to avoid blocking navigation
+      inventoryController.fetchInventory();
+
+      Get.back();
+
+      // Show snackbar after navigation to ensure it's visible
+      Future.delayed(const Duration(milliseconds: 100), () {
+        Get.snackbar('Success', 'Inventory updated successfully',
+            snackPosition: SnackPosition.BOTTOM);
+      });
     } catch (e) {
-      Get.snackbar('Error', 'Failed: $e', backgroundColor: Colors.redAccent, colorText: Colors.white);
+      Get.snackbar('Error', 'Failed: $e',
+          backgroundColor: Colors.redAccent, colorText: Colors.white);
     } finally {
       if (mounted) setState(() => _saving = false);
     }
@@ -89,7 +103,8 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
           icon: Icon(Icons.arrow_back_rounded, color: bluePrimary),
           onPressed: () => Get.back(),
         ),
-        title: Text('Edit Inventory', style: TextStyle(color: bluePrimary, fontWeight: FontWeight.bold)),
+        title: Text('Edit Inventory',
+            style: TextStyle(color: bluePrimary, fontWeight: FontWeight.bold)),
       ),
       body: Form(
         key: _formKey,
@@ -98,27 +113,39 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Update item details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.grey.shade800)),
+              Text('Update item details',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800)),
               const SizedBox(height: 18),
               Card(
                 elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18)),
                 child: Padding(
                   padding: const EdgeInsets.all(18.0),
                   child: Column(
                     children: [
                       TextFormField(
                         controller: itemName,
-                        decoration: _dec('Product Name', Icons.inventory_2_outlined),
+                        decoration:
+                            _dec('Product Name', Icons.inventory_2_outlined),
                         textInputAction: TextInputAction.next,
-                        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Required' : null,
                       ),
                       const SizedBox(height: 14),
                       TextFormField(
                         controller: price,
-                        decoration: _dec('Price (K)', Icons.attach_money_rounded),
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^[0-9]*[.]?[0-9]{0,2}'))],
+                        decoration:
+                            _dec('Price (K)', Icons.attach_money_rounded),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^[0-9]*[.]?[0-9]{0,2}'))
+                        ],
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Required';
                           final val = double.tryParse(v);
@@ -132,7 +159,9 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
                         controller: quantityController,
                         decoration: _dec('Quantity', Icons.numbers_rounded),
                         keyboardType: TextInputType.number,
-                        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly
+                        ],
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Required';
                           final val = int.tryParse(v);
@@ -144,7 +173,10 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
                       const SizedBox(height: 20),
                       Align(
                         alignment: Alignment.centerLeft,
-                        child: Text('Image', style: TextStyle(fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
+                        child: Text('Image',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey.shade700)),
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -159,11 +191,18 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
                               ),
                               child: Column(
                                 children: [
-                                  ImagePickerWidget(mc: mc, imagePath: imagePath),
+                                  ImagePickerWidget(
+                                      mc: mc, imagePath: imagePath),
                                   const SizedBox(height: 8),
                                   Text(
-                                    imagePath.text.isEmpty ? 'Select from gallery' : 'Selected',
-                                    style: TextStyle(fontSize: 12, color: imagePath.text.isEmpty ? Colors.grey : Colors.green),
+                                    imagePath.text.isEmpty
+                                        ? 'Select from gallery'
+                                        : 'Selected',
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: imagePath.text.isEmpty
+                                            ? Colors.grey
+                                            : Colors.green),
                                   )
                                 ],
                               ),

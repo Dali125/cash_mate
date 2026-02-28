@@ -3,11 +3,9 @@ import 'dart:core';
 
 import 'package:cash_app/controllers/page_controller.dart';
 import 'package:cash_app/db/config.dart';
-import 'package:cash_app/services/device_properties.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:get/get_core/src/get_main.dart';
 
 class HomePageTablet extends StatefulWidget {
   const HomePageTablet({super.key});
@@ -18,8 +16,7 @@ class HomePageTablet extends StatefulWidget {
 
 class _HomePageTabletState extends State<HomePageTablet> {
   final pc = Get.find<PageControllers>();
-  Future<Map<String, dynamic>> salesSummary =
-      Future.value(Map<String, dynamic>());
+  Future<Map<String, dynamic>> salesSummary = Future.value(<String, dynamic>{});
   Config db = Get.find<Config>();
 
   Future<Map<String, dynamic>> getSalesSummary() async {
