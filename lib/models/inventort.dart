@@ -17,6 +17,9 @@ class Item extends HiveObject {
   int quantity;
 
   @HiveField(4)
+  double discount;
+
+  @HiveField(5)
   String imageUrl;
 
   Item({
@@ -25,6 +28,7 @@ class Item extends HiveObject {
     required this.price,
     required this.quantity,
     required this.imageUrl,
+    this.discount = 0.0,
   });
 
   /// Convert Item object to JSON
@@ -34,6 +38,7 @@ class Item extends HiveObject {
       'name': name,
       'price': price,
       'quantity': quantity,
+      'discount': discount,
       'image_url': imageUrl,
     };
   }
@@ -45,6 +50,7 @@ class Item extends HiveObject {
       name: json['name'] ?? '',
       price: json['price']?.toDouble() ?? 0.0,
       quantity: json['quantity'] ?? 0,
+      discount: json['discount']?.toDouble() ?? 0.0,
       imageUrl: json['image_url'] ?? '',
     );
   }

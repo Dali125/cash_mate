@@ -1,10 +1,9 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:cash_app/db/config.dart';
 import 'package:cash_app/utils/color.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 class DataExportPage extends StatefulWidget {
@@ -40,36 +39,54 @@ class _DataExportPageState extends State<DataExportPage> {
     setState(() => _isExporting = true);
 
     try {
-      final directory = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
-      final List<String> filePaths = [];
+      final timestamp =
+          DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);
+      final List<XFile> files = [];
+      final List<String> fileNames = [];
 
       // Export Sales Data
       if (_exportSales) {
-        final salesFile = File('${directory.path}/sales_export_$timestamp.csv');
         final salesCSV = await _generateSalesCSV();
-        await salesFile.writeAsString(salesCSV);
-        filePaths.add(salesFile.path);
+        final salesFileName = 'sales_export_$timestamp.csv';
+        files.add(
+          XFile.fromData(
+            utf8.encode(salesCSV),
+            mimeType: 'text/csv',
+            name: salesFileName,
+          ),
+        );
+        fileNames.add(salesFileName);
       }
 
       // Export Inventory Data
       if (_exportInventory) {
-        final inventoryFile = File('${directory.path}/inventory_export_$timestamp.csv');
         final inventoryCSV = await _generateInventoryCSV();
-        await inventoryFile.writeAsString(inventoryCSV);
-        filePaths.add(inventoryFile.path);
+        final inventoryFileName = 'inventory_export_$timestamp.csv';
+        files.add(
+          XFile.fromData(
+            utf8.encode(inventoryCSV),
+            mimeType: 'text/csv',
+            name: inventoryFileName,
+          ),
+        );
+        fileNames.add(inventoryFileName);
       }
 
-      // Share the files
-      if (filePaths.isNotEmpty) {
-        await Share.shareXFiles(
-          filePaths.map((path) => XFile(path)).toList(),
-          text: 'CashMate Data Export - $timestamp',
+      // On web this triggers file download/share. On mobile it opens share sheet.
+      if (files.isNotEmpty) {
+        await SharePlus.instance.share(
+          ShareParams(
+            text: 'CashMate Data Export - $timestamp',
+            files: files,
+            fileNameOverrides: fileNames,
+          ),
         );
 
         Get.snackbar(
           'Success',
-          'Data exported successfully! Files have been shared.',
+          kIsWeb
+              ? 'Data exported successfully! CSV download has started.'
+              : 'Data exported successfully! Files have been shared.',
           backgroundColor: Colors.green.shade100,
           colorText: Colors.green.shade900,
           duration: const Duration(seconds: 3),
@@ -88,47 +105,50 @@ class _DataExportPageState extends State<DataExportPage> {
   }
 
   Future<String> _generateSalesCSV() async {
-    final salesData = await db.getSalesHistory();
-    if (salesData == null || salesData.isEmpty) {
+    final salesRows = await db.getSalesExportRows();
+    if (salesRows.isEmpty) {
       return 'No sales data available\n';
     }
 
     final buffer = StringBuffer();
-    
-    // CSV Headers
-    buffer.writeln('Date,Invoice ID,Amount,Transaction Type,Items,Item Details');
 
-    // Filter by date range if specified
-    final filteredSales = _filterSalesByDate(salesData);
+    // CSV headers tailored for business users (one row per sold item)
+    buffer.writeln(
+      'Sale ID,Transaction Type,Date,Time,Item Name,Quantity Sold,Unit Price (K),Line Total (K),Sale Total (K)',
+    );
 
-    for (final sale in filteredSales) {
-      final date = sale['date'] ?? '';
-      final id = sale['id'] ?? '';
-      final amount = sale['amount'] ?? 0;
-      final transactionType = sale['transaction_type'] ?? '';
-      
-      // Parse items if available
-      String itemsCount = '0';
-      String itemDetails = '';
-      
-      try {
-        if (sale['items'] != null) {
-          final items = jsonDecode(sale['items'].toString());
-          if (items is List) {
-            itemsCount = items.length.toString();
-            itemDetails = items.map((item) {
-              return '${item['name']} (${item['quantity']}x @ K${item['price']})';
-            }).join('; ');
-          }
-        }
-      } catch (e) {
-        // Handle parsing errors gracefully
-      }
+    final filteredSales = _filterSalesByDate(
+      salesRows
+          .map((row) => {
+                ...row,
+                'date': row['sale_date'],
+              })
+          .toList(),
+    );
 
-      // Escape commas and quotes in text fields
-      final escapedDetails = itemDetails.replaceAll('"', '""');
-      
-      buffer.writeln('"$date","$id","$amount","$transactionType","$itemsCount","$escapedDetails"');
+    for (final row in filteredSales) {
+      final saleDate = _parseDateTime(row['sale_date']);
+      final saleId = row['sale_id']?.toString() ?? '';
+      final transactionType = row['transaction_type']?.toString() ?? 'Unknown';
+      final itemName = (row['item_name']?.toString().trim().isNotEmpty ?? false)
+          ? row['item_name'].toString()
+          : 'N/A';
+      final quantitySold = _asIntString(row['quantity_sold']);
+      final unitPrice = _formatMoney(row['unit_price']);
+      final lineTotal = _formatMoney(row['line_total']);
+      final saleTotal = _formatMoney(row['sale_total']);
+
+      buffer.writeln([
+        _csvCell(saleId),
+        _csvCell(transactionType),
+        _csvCell(_formatDate(saleDate, row['sale_date']?.toString() ?? '')),
+        _csvCell(_formatTime(saleDate)),
+        _csvCell(itemName),
+        _csvCell(quantitySold),
+        _csvCell(unitPrice),
+        _csvCell(lineTotal),
+        _csvCell(saleTotal),
+      ].join(','));
     }
 
     return buffer.toString();
@@ -142,19 +162,21 @@ class _DataExportPageState extends State<DataExportPage> {
 
     final buffer = StringBuffer();
     
-    // CSV Headers
+    // CSV headers with user-friendly labels
     if (_includeImages) {
-      buffer.writeln('Name,Price,Quantity,Image URL,Stock Status,Total Value');
+      buffer.writeln(
+          'Item Name,Current Stock,Unit Price (K),Stock Value (K),Stock Status,Image URL');
     } else {
-      buffer.writeln('Name,Price,Quantity,Stock Status,Total Value');
+      buffer.writeln(
+          'Item Name,Current Stock,Unit Price (K),Stock Value (K),Stock Status');
     }
 
     for (final item in inventoryData) {
-      final name = item['name'] ?? '';
-      final price = (item['price'] ?? 0).toString();
-      final quantity = (item['quantity'] ?? 0).toString();
+      final name = item['name']?.toString() ?? '';
+      final unitPrice = _formatMoney(item['price']);
+      final quantity = _asIntString(item['quantity']);
       final imageUrl = item['image_url'] ?? '';
-      
+
       // Calculate stock status
       final qty = (item['quantity'] ?? 0) as num;
       String stockStatus = 'In Stock';
@@ -166,22 +188,65 @@ class _DataExportPageState extends State<DataExportPage> {
         stockStatus = 'Low Stock';
       }
 
-      // Calculate total value
-      final totalValue = (((item['price'] ?? 0) as num) * qty).toString();
-
-      // Escape commas and quotes in text fields
-      final escapedName = name.replaceAll('"', '""');
-      final escapedImageUrl = imageUrl.replaceAll('"', '""');
+      // Calculate stock value
+      final stockValue = _formatMoney(((item['price'] ?? 0) as num) * qty);
 
       if (_includeImages) {
-        buffer.writeln('"$escapedName","$price","$quantity","$escapedImageUrl","$stockStatus","$totalValue"');
+        buffer.writeln([
+          _csvCell(name),
+          _csvCell(quantity),
+          _csvCell(unitPrice),
+          _csvCell(stockValue),
+          _csvCell(stockStatus),
+          _csvCell(imageUrl.toString()),
+        ].join(','));
       } else {
-        buffer.writeln('"$escapedName","$price","$quantity","$stockStatus","$totalValue"');
+        buffer.writeln([
+          _csvCell(name),
+          _csvCell(quantity),
+          _csvCell(unitPrice),
+          _csvCell(stockValue),
+          _csvCell(stockStatus),
+        ].join(','));
       }
     }
 
     return buffer.toString();
   }
+
+  DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    return DateTime.tryParse(value.toString());
+  }
+
+  String _formatDate(DateTime? date, String fallback) {
+    if (date == null) return fallback;
+    final day = date.day.toString().padLeft(2, '0');
+    final month = date.month.toString().padLeft(2, '0');
+    return '$day/$month/${date.year}';
+  }
+
+  String _formatTime(DateTime? date) {
+    if (date == null) return '';
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _asIntString(dynamic value) {
+    if (value == null) return '0';
+    if (value is int) return value.toString();
+    if (value is num) return value.toInt().toString();
+    return int.tryParse(value.toString())?.toString() ?? '0';
+  }
+
+  String _formatMoney(dynamic value) {
+    if (value == null) return '0.00';
+    final number = value is num ? value.toDouble() : double.tryParse(value.toString()) ?? 0.0;
+    return number.toStringAsFixed(2);
+  }
+
+  String _csvCell(String value) => '"${value.replaceAll('"', '""')}"';
 
   List<Map<String, dynamic>> _filterSalesByDate(List<Map<String, dynamic>> salesData) {
     if (_dateRange == 'all') return salesData;
@@ -483,7 +548,7 @@ class _DataExportPageState extends State<DataExportPage> {
             
             _buildOptionCard(
               title: 'Sales Data',
-              subtitle: 'Export transaction history, amounts, and items sold',
+              subtitle: 'Each row shows item sold, quantity, payment type, date, and time',
               value: _exportSales,
               onChanged: (value) => setState(() => _exportSales = value),
               icon: Icons.point_of_sale,
@@ -491,7 +556,7 @@ class _DataExportPageState extends State<DataExportPage> {
             
             _buildOptionCard(
               title: 'Inventory Data',
-              subtitle: 'Export product information, prices, and stock levels',
+              subtitle: 'Shows item name, stock on hand, unit price, and stock value',
               value: _exportInventory,
               onChanged: (value) => setState(() => _exportInventory = value),
               icon: Icons.inventory_2,

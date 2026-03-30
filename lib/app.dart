@@ -7,8 +7,18 @@ import 'package:cash_app/ui/components/pages/mobile/payments/payment_page.dart';
 import 'package:cash_app/ui/components/pages/mobile/root.dart';
 import 'package:cash_app/ui/components/pages/mobile/sales_history/history.dart';
 import 'package:cash_app/ui/components/pages/mobile/sales_page.dart';
+import 'package:cash_app/ui/components/pages/tablet/add_inventory_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/edit_inventory_tablet.dart';
 import 'package:cash_app/ui/components/pages/tablet/inventory_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/inventory_item_overview_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/payment_page_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/sales_history_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/sales_page_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/tablet_root.dart';
+import 'package:cash_app/ui/components/pages/tablet/transaction_complete_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/welcome_screens_tablet.dart';
 import 'package:cash_app/ui/components/pages/mobile/transaction_complete_page.dart';
+import 'package:cash_app/services/device_properties.dart';
 import 'package:cash_app/utils/color.dart';
 
 import 'package:flutter/material.dart';
@@ -21,6 +31,8 @@ class MyApp extends StatelessWidget {
   // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    final device = DeviceProperties();
+
     return GetMaterialApp(
       title: 'Cash App',
       theme: ThemeData(
@@ -28,17 +40,36 @@ class MyApp extends StatelessWidget {
       ),
       home: const _StartupGate(),
       routes: {
-        '/welcome_screens': (context) => const WelcomeScreens(),
-        '/inventory': (context) => const InventoryPage(),
-        '/add-inventory': (context) => const AddInventoryPage(),
-        '/sales': (context) => SalesPage(),
-        '/edit-inventory': (context) => const EditInventoryPage(),
-        '/inventory-item-overview': (context) => InventoryItemOverview(),
+      '/welcome_screens': (context) => device.isTablet(context)
+        ? const WelcomeScreensTablet()
+        : const WelcomeScreens(),
+      '/inventory': (context) => device.isTablet(context)
+        ? const InventoryPageTablet()
+        : const InventoryPage(),
+      '/add-inventory': (context) => device.isTablet(context)
+        ? const AddInventoryPageTablet()
+        : const AddInventoryPage(),
+      '/sales': (context) => device.isTablet(context)
+            ? const SalesPageTablet()
+            : SalesPage(),
+      '/edit-inventory': (context) => device.isTablet(context)
+        ? const EditInventoryPageTablet()
+        : const EditInventoryPage(),
+      '/edit-inventory-tablet': (context) => const EditInventoryPageTablet(),
+      '/inventory-item-overview': (context) => device.isTablet(context)
+        ? const InventoryItemOverviewTablet()
+        : InventoryItemOverview(),
         '/inventory-tablet': (context) => const InventoryPageTablet(),
-        '/add-inventory-tablet': (context) => const AddInventoryPage(),
-        '/transaction_complete': (context) => TransactionCompletePage(),
-        '/payment_page': (context) => PaymentPage(),
-        '/sales-history-detail': (context) => SalesHistory(),
+      '/add-inventory-tablet': (context) => const AddInventoryPageTablet(),
+      '/transaction_complete': (context) => device.isTablet(context)
+        ? const TransactionCompletePageTablet()
+        : TransactionCompletePage(),
+      '/payment_page': (context) => device.isTablet(context)
+        ? const PaymentPageTablet()
+        : PaymentPage(),
+      '/sales-history-detail': (context) => device.isTablet(context)
+        ? const SalesHistoryTablet()
+        : SalesHistory(),
       },
     );
   }
@@ -61,7 +92,15 @@ class _StartupGate extends StatelessWidget {
         }
 
         final logins = snapshot.data ?? 0;
-        return logins > 0 ? const RootPage() : const WelcomeScreens();
+        if (logins > 0) {
+          return DeviceProperties().isTablet(context)
+              ? const TabletRoot()
+              : const RootPage();
+        }
+
+        return DeviceProperties().isTablet(context)
+            ? const WelcomeScreensTablet()
+            : const WelcomeScreens();
       },
     );
   }

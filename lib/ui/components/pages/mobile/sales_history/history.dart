@@ -2,10 +2,9 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:cash_app/services/device_properties.dart';
-import 'package:cash_app/ui/components/button.dart';
 import 'package:cash_app/utils/color.dart';
 import 'package:data_table_2/data_table_2.dart';
 import 'package:flutter/material.dart';
@@ -99,8 +98,6 @@ class SalesHistory extends StatelessWidget {
   Widget build(BuildContext context) {
     final args = Get.arguments;
     final data = _parseItemsSold(args["items_sold"]);
-
-    print(data);
 
     return Scaffold(
       appBar: AppBar(
@@ -284,7 +281,7 @@ class SalesHistory extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 8,
               offset: const Offset(0, -2),
             ),
@@ -311,7 +308,7 @@ class SalesHistory extends StatelessWidget {
               ),
               onPressed: () async {
                 try {
-                  await GenerateReceipt(args);
+                  await generateReceipt(args);
                 } catch (e) {
                   Get.showSnackbar(GetSnackBar(
                     message: e.toString(),
@@ -327,11 +324,12 @@ class SalesHistory extends StatelessWidget {
 }
 
 String convertToDate(String date) {
-  DateTime dateTime = DateTime.parse(date);
+  final dateTime = DateTime.tryParse(date);
+  if (dateTime == null) return date;
   return "${dateTime.day}-${dateTime.month}-${dateTime.year}";
 }
 
-Future<void> GenerateReceipt(dynamic args) async {
+Future<void> generateReceipt(dynamic args) async {
   final doc = pw.Document();
 
   final font =
@@ -339,69 +337,317 @@ Future<void> GenerateReceipt(dynamic args) async {
   final ttf = pw.Font.ttf(font);
 
   final data = _parseItemsSold(args["items_sold"]);
+  final items = data.values
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .toList();
 
-  double total = 0;
-  final items = data.values.toList();
-
-  for (final item in items) {
-    total += (item["price"] * item["quantity"]);
+  double parseAmount(dynamic value) {
+    if (value is num) return value.toDouble();
+    return double.tryParse(value?.toString() ?? '') ?? 0.0;
   }
 
-  doc.addPage(
+  String formatCurrency(double value) => 'K ${value.toStringAsFixed(2)}';
+
+  String formatDateTime(String rawDate) {
+    final parsed = DateTime.tryParse(rawDate);
+    if (parsed == null) return rawDate;
+    final day = parsed.day.toString().padLeft(2, '0');
+    final month = parsed.month.toString().padLeft(2, '0');
+    final year = parsed.year.toString();
+    final hour = parsed.hour.toString().padLeft(2, '0');
+    final minute = parsed.minute.toString().padLeft(2, '0');
+    return '$day/$month/$year  $hour:$minute';
+  }
+
+  final total = parseAmount(args["amount"]) > 0
+      ? parseAmount(args["amount"])
+      : items.fold<double>(
+          0,
+          (sum, item) =>
+              sum +
+              (parseAmount(item["price"]) * parseAmount(item["quantity"])),
+        );
+  final saleId = args["id"]?.toString() ?? 'N/A';
+  final paymentMethod = args["transaction_type"]?.toString() ?? 'N/A';
+  final dateLabel = formatDateTime(args["date"]?.toString() ?? '');
+  final receiptNumber = saleId == 'N/A' ? 'CashMate Receipt' : 'CM-$saleId';
+  final accent = pdf.PdfColor.fromInt(bluePrimary.toARGB32());
+  final accentSoft =
+      pdf.PdfColor.fromInt(bluePrimary.withValues(alpha: 0.10).toARGB32());
+  final lineColor = pdf.PdfColor.fromInt(const Color(0xFFD7DDE7).toARGB32());
+
+  doc.addPage( 
     pw.Page(
+      pageFormat: pdf.PdfPageFormat.a4,
+      margin: const pw.EdgeInsets.all(28),
       build: (pw.Context context) {
-        return pw.Column(
-          crossAxisAlignment: pw.CrossAxisAlignment.start,
-          children: [
-            pw.Center(
-              child: pw.Text("RECEIPT",
+        return pw.Container(
+          decoration: pw.BoxDecoration(
+            color: pdf.PdfColors.white,
+            borderRadius: pw.BorderRadius.circular(18),
+            border: pw.Border.all(color: lineColor, width: 0.7),
+          ),
+          child: pw.Padding(
+            padding: const pw.EdgeInsets.all(24),
+            child: pw.Column(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Center(
+                  child: pw.Column(
+                    children: [
+                      pw.Text(
+                        'CASHMATE',
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 24,
+                          fontWeight: pw.FontWeight.bold,
+                          color: accent,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Sales Receipt',
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 14,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 20),
+                pw.Container(
+                  padding: const pw.EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
+                  decoration: pw.BoxDecoration(
+                    color: accentSoft,
+                    borderRadius: pw.BorderRadius.circular(12),
+                  ),
+                  child: pw.Column(
+                    children: [
+                      _pdfMetaRow(ttf, 'Receipt No.', receiptNumber),
+                      _pdfMetaRow(ttf, 'Sales ID', saleId),
+                      _pdfMetaRow(ttf, 'Payment', paymentMethod),
+                      _pdfMetaRow(ttf, 'Date', dateLabel),
+                      _pdfMetaRow(ttf, 'Status', 'Completed', isLast: true),
+                    ],
+                  ),
+                ),
+                pw.SizedBox(height: 18),
+                pw.Text(
+                  'Items Sold',
                   style: pw.TextStyle(
-                      font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 28)),
+                    font: ttf,
+                    fontWeight: pw.FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+                pw.SizedBox(height: 10),
+                pw.Table(
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(4),
+                    1: const pw.FlexColumnWidth(1.2),
+                    2: const pw.FlexColumnWidth(2),
+                    3: const pw.FlexColumnWidth(2),
+                  },
+                  border: pw.TableBorder(
+                    horizontalInside:
+                        pw.BorderSide(color: lineColor, width: 0.5),
+                    top: pw.BorderSide(color: lineColor, width: 0.7),
+                    bottom: pw.BorderSide(color: lineColor, width: 0.7),
+                  ),
+                  children: [
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(color: accentSoft),
+                      children: [
+                        _pdfTableCell(ttf, 'ITEM', isHeader: true),
+                        _pdfTableCell(ttf, 'QTY', isHeader: true),
+                        _pdfTableCell(ttf, 'PRICE', isHeader: true),
+                        _pdfTableCell(ttf, 'TOTAL', isHeader: true),
+                      ],
+                    ),
+                    ...items.map(
+                      (item) {
+                        final quantity = parseAmount(item["quantity"]);
+                        final unitPrice = parseAmount(item["price"]);
+                        final lineTotal = quantity * unitPrice;
+                        return pw.TableRow(
+                          children: [
+                            _pdfTableCell(
+                              ttf,
+                              item["name"]?.toString() ?? 'Unknown Item',
+                            ),
+                            _pdfTableCell(
+                              ttf,
+                              quantity.toStringAsFixed(
+                                  quantity.truncateToDouble() == quantity
+                                      ? 0
+                                      : 2),
+                              alignRight: true,
+                            ),
+                            _pdfTableCell(
+                              ttf,
+                              formatCurrency(unitPrice),
+                              alignRight: true,
+                            ),
+                            _pdfTableCell(
+                              ttf,
+                              formatCurrency(lineTotal),
+                              alignRight: true,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                pw.Spacer(),
+                pw.SizedBox(height: 18),
+                pw.Align(
+                  alignment: pw.Alignment.centerRight,
+                  child: pw.Container(
+                    width: 200,
+                    padding: const pw.EdgeInsets.all(14),
+                    decoration: pw.BoxDecoration(
+                      color: accentSoft,
+                      borderRadius: pw.BorderRadius.circular(12),
+                    ),
+                    child: pw.Column(
+                      children: [
+                        _pdfTotalRow(ttf, 'Subtotal', formatCurrency(total)),
+                        _pdfTotalRow(ttf, 'TOTAL', formatCurrency(total),
+                            emphasized: true),
+                      ],
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 18),
+                pw.Center(
+                  child: pw.Column(
+                    children: [
+                      pw.Text(
+                        'Thank you for your purchase',
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontWeight: pw.FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.Text(
+                        'Powered by CashMate',
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 10,
+                          color: pdf.PdfColors.grey700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            pw.SizedBox(height: 20),
-            pw.Text("Sales ID: ${args["id"]}",
-                style: pw.TextStyle(font: ttf, fontSize: 14)),
-            pw.Text("Date: ${convertToDate(args["date"])}",
-                style: pw.TextStyle(font: ttf, fontSize: 14)),
-            pw.Text("Payment Method: ${args["transaction_type"]}",
-                style: pw.TextStyle(font: ttf, fontSize: 14)),
-            pw.Text("Status: Complete",
-                style: pw.TextStyle(font: ttf, fontSize: 14)),
-            pw.SizedBox(height: 20),
-            pw.Text("Items Sold",
-                style: pw.TextStyle(
-                    font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 20)),
-            pw.Divider(),
-            pw.Table.fromTextArray(
-              cellStyle: pw.TextStyle(font: ttf),
-              headerStyle:
-                  pw.TextStyle(font: ttf, fontWeight: pw.FontWeight.bold),
-              headers: ["Item", "Qty", "Unit Price", "Subtotal"],
-              data: items.map((item) {
-                return [
-                  item["name"],
-                  "${item["quantity"]}",
-                  "${item["price"]}",
-                  "${item["quantity"] * item["price"]}"
-                ];
-              }).toList(),
-            ),
-            pw.Divider(),
-            pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Text("Total: K$total",
-                  style: pw.TextStyle(
-                      font: ttf, fontWeight: pw.FontWeight.bold, fontSize: 18)),
-            ),
-          ],
+          ),
         );
       },
     ),
   );
 
+  final bytes = await doc.save();
   final output = await getTemporaryDirectory();
-  final file = File('${output.path}/receipt.pdf');
-  await file.writeAsBytes(await doc.save());
+  final file = File('${output.path}/cashmate_receipt_$saleId.pdf');
+  await file.writeAsBytes(bytes, flush: true);
 
-  await Printing.sharePdf(bytes: await doc.save(), filename: 'my-document.pdf');
+  await Printing.layoutPdf(
+    onLayout: (_) async => bytes,
+    name: 'cashmate_receipt_$saleId.pdf',
+  );
+}
+
+pw.Widget _pdfMetaRow(
+  pw.Font font,
+  String label,
+  String value, {
+  bool isLast = false,
+}) {
+  return pw.Container(
+    margin: isLast ? pw.EdgeInsets.zero : const pw.EdgeInsets.only(bottom: 6),
+    child: pw.Row(
+      children: [
+        pw.Text(
+          label,
+          style: pw.TextStyle(
+            font: font,
+            fontSize: 10.5,
+            color: pdf.PdfColors.grey700,
+          ),
+        ),
+        pw.Spacer(),
+        pw.Text(
+          value,
+          style: pw.TextStyle(
+            font: font,
+            fontSize: 10.5,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+pw.Widget _pdfTableCell(
+  pw.Font font,
+  String text, {
+  bool isHeader = false,
+  bool alignRight = false,
+}) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+    child: pw.Text(
+      text,
+      textAlign: alignRight ? pw.TextAlign.right : pw.TextAlign.left,
+      style: pw.TextStyle(
+        font: font,
+        fontSize: isHeader ? 10 : 10.5,
+        fontWeight: isHeader ? pw.FontWeight.bold : pw.FontWeight.normal,
+      ),
+    ),
+  );
+}
+
+pw.Widget _pdfTotalRow(
+  pw.Font font,
+  String label,
+  String value, {
+  bool emphasized = false,
+}) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 8),
+    child: pw.Row(
+      children: [
+        pw.Text(
+          label,
+          style: pw.TextStyle(
+            font: font,
+            fontSize: emphasized ? 12 : 10.5,
+            fontWeight: emphasized ? pw.FontWeight.bold : pw.FontWeight.normal,
+          ),
+        ),
+        pw.Spacer(),
+        pw.Text(
+          value,
+          style: pw.TextStyle(
+            font: font,
+            fontSize: emphasized ? 12 : 10.5,
+            fontWeight: pw.FontWeight.bold,
+          ),
+        ),
+      ],
+    ),
+  );
 }

@@ -7,11 +7,9 @@ import 'package:cash_app/ui/components/pages/inventory/excel/page.dart';
 import 'package:cash_app/ui/components/pages/mobile/inventory_page.dart';
 
 import 'package:cash_app/ui/components/pages/mobile/more_tools.dart';
-import 'package:cash_app/ui/components/pages/mobile/sales_page.dart';
 
 import 'package:cash_app/ui/components/pages/mobile/splash_screen/sales_history_page.dart';
-import 'package:cash_app/ui/components/pages/tablet/inventory_tablet.dart';
-import 'package:cash_app/ui/components/pages/tablet/sales_page_tablet.dart';
+import 'package:cash_app/ui/components/pages/tablet/tablet_root.dart';
 
 import 'package:cash_app/utils/color.dart';
 import 'package:cash_app/utils/misc.dart';
@@ -66,20 +64,23 @@ class _RootPageState extends State<RootPage> {
   int currentPage = 0;
   @override
   Widget build(BuildContext context) {
+    if (DeviceProperties().isTablet(context)) {
+      return const TabletRoot();
+    }
+
     final pc = Get.find<PageControllers>();
     return ShowCaseWidget(
       builder: (context) => Scaffold(
+        backgroundColor: appBackground,
         body: SafeArea(
-          child: DeviceProperties().isDesktop(context)
-              ? InventoryPageTablet()
-              : switch (pc.currentPage.value) {
-                  0 => HomePage(),
-                  1 => InventoryPage(),
-                  2 => SalesHistoryPage(),
-                  3 => MoreToolsPage(),
-                  4 => SettingsPage(),
-                  _ => HomePage(),
-                },
+          child: switch (pc.currentPage.value) {
+            0 => HomePage(),
+            1 => InventoryPage(),
+            2 => SalesHistoryPage(),
+            3 => MoreToolsPage(),
+            4 => SettingsPage(),
+            _ => HomePage(),
+          },
         ),
         floatingActionButtonLocation:
             pc.currentPage.value == 1 ? ExpandableFab.location : null,
@@ -90,11 +91,7 @@ class _RootPageState extends State<RootPage> {
                 description: 'Tap here to create a new sale quickly.',
                 child: FloatingActionButton(
                   onPressed: () {
-                    if (DeviceProperties().isTablet(context)) {
-                      Get.to(() => SalesPageTablet());
-                    } else {
-                      Get.to(() => SalesPage());
-                    }
+                    Get.toNamed('/sales');
                   },
                   child: const Icon(Icons.calculate),
                 ),
@@ -104,7 +101,7 @@ class _RootPageState extends State<RootPage> {
                     onOpen: () => pc.toggleFab(),
                     onClose: () => pc.toggleFab(),
                     overlayStyle: const ExpandableFabOverlayStyle(
-                      color: Color(0x88000000),
+                      color: Color.fromARGB(135, 31, 31, 31),
                     ),
                     key: _expandableFabKey,
                     type: ExpandableFabType.up,
@@ -126,7 +123,13 @@ class _RootPageState extends State<RootPage> {
                     children: [
                       Row(
                         children: [
-                          Text("Add Inventory Manually"),
+                          Text(
+                            "Add Inventory Manually",
+                            style: TextStyle(
+                                color: pc.isFabExpanded.value
+                                    ? Colors.black
+                                    : Colors.white),
+                          ),
                           SizedBox(width: 10),
                           FloatingActionButton.small(
                             heroTag: "manual",
@@ -137,7 +140,13 @@ class _RootPageState extends State<RootPage> {
                       ),
                       Row(
                         children: [
-                          Text("Add Inventory from Excel"),
+                          Text(
+                            "Add Inventory from Excel",
+                            style: TextStyle(
+                                color: pc.isFabExpanded.value
+                                    ? Colors.black
+                                    : Colors.white),
+                          ),
                           SizedBox(width: 10),
                           FloatingActionButton.small(
                             heroTag: "csv",
@@ -150,7 +159,13 @@ class _RootPageState extends State<RootPage> {
                       ),
                       Row(
                         children: [
-                          Text("Add Inventory from Barcode"),
+                          Text(
+                            "Add Inventory from Barcode",
+                            style: TextStyle(
+                                color: pc.isFabExpanded.value
+                                    ? Colors.black
+                                    : Colors.white),
+                          ),
                           SizedBox(width: 10),
                           FloatingActionButton.small(
                             heroTag: "scan",
@@ -162,61 +177,60 @@ class _RootPageState extends State<RootPage> {
                     ],
                   )
                 : null,
-        bottomNavigationBar: DeviceProperties().isTablet(context)
-            ? const SizedBox.shrink()
-            : BottomNavigationBar(
-                onTap: (index) {
-                  pc.changePage(index);
-                  setState(() {});
-                },
-                currentIndex: pc.currentPage.value,
-                items: <BottomNavigationBarItem>[
-                  BottomNavigationBarItem(
-                    icon: Showcase(
-                      key: _navHomeKey,
-                      description: 'Home dashboard overview.',
-                      child: const Icon(Icons.home),
-                    ),
-                    label: 'Home',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Showcase(
-                      key: _navInventoryKey,
-                      description: 'Manage your products here.',
-                      child: const Icon(Icons.inventory),
-                    ),
-                    label: 'Inventory',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Showcase(
-                      key: _navSalesHistKey,
-                      description: 'View your recent sales history.',
-                      child: const Icon(Icons.history),
-                    ),
-                    label: 'Sales History',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Showcase(
-                      key: _navMoreKey,
-                      description: 'More tools & reports.',
-                      child: const Icon(Icons.more_horiz),
-                    ),
-                    label: 'More',
-                  ),
-                  BottomNavigationBarItem(
-                    icon: Showcase(
-                      key: _navSettingsKey,
-                      description: 'Configure application settings.',
-                      child: const Icon(Icons.settings),
-                    ),
-                    label: 'Settings',
-                  ),
-                ],
-                selectedItemColor: bluePrimary,
-                unselectedItemColor: Colors.grey,
-                type: BottomNavigationBarType.fixed,
-                showUnselectedLabels: true,
+        bottomNavigationBar: BottomNavigationBar(
+          backgroundColor: Colors.white,
+          onTap: (index) {
+            pc.changePage(index);
+            setState(() {});
+          },
+          currentIndex: pc.currentPage.value,
+          items: <BottomNavigationBarItem>[
+            BottomNavigationBarItem(
+              icon: Showcase(
+                key: _navHomeKey,
+                description: 'Home dashboard overview.',
+                child: const Icon(Icons.home),
               ),
+              label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Showcase(
+                key: _navInventoryKey,
+                description: 'Manage your products here.',
+                child: const Icon(Icons.inventory),
+              ),
+              label: 'Inventory',
+            ),
+            BottomNavigationBarItem(
+              icon: Showcase(
+                key: _navSalesHistKey,
+                description: 'View your recent sales history.',
+                child: const Icon(Icons.history),
+              ),
+              label: 'Sales History',
+            ),
+            BottomNavigationBarItem(
+              icon: Showcase(
+                key: _navMoreKey,
+                description: 'More tools & reports.',
+                child: const Icon(Icons.more_horiz),
+              ),
+              label: 'More',
+            ),
+            BottomNavigationBarItem(
+              icon: Showcase(
+                key: _navSettingsKey,
+                description: 'Configure application settings.',
+                child: const Icon(Icons.settings),
+              ),
+              label: 'Settings',
+            ),
+          ],
+          selectedItemColor: bluePrimary,
+          unselectedItemColor: appMutedText,
+          type: BottomNavigationBarType.fixed,
+          showUnselectedLabels: true,
+        ),
       ),
     );
   }

@@ -224,6 +224,10 @@ class _InventoryCard extends StatelessWidget {
                                   label:
                                       'Price: K ${parsedPrice?.toStringAsFixed(2) ?? '--'}'),
                               _Chip(label: 'Qty: ${itemData['quantity']}'),
+                              if ((itemData['discount'] ?? 0) > 0)
+                                _Chip(
+                                    label:
+                                        'Discount: ${itemData['discount']}%'),
                             ],
                           ),
                         ],

@@ -7,6 +7,7 @@ import 'package:cash_app/ui/components/pages/sales/barcode_mode/page.dart';
 import 'package:cash_app/utils/misc.dart';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import 'package:showcaseview/showcaseview.dart';
 
@@ -30,6 +31,7 @@ class _SalesPageState extends State<SalesPage> {
   final db = Get.find<Config>();
   final deviceProperties = DeviceProperties();
   final _searchController = TextEditingController();
+  bool isAndroid = !kIsWeb && Platform.isAndroid;
 
   // New: cache inventory future & debounce
   Future<List<Map<String, dynamic>>?>? _inventoryFuture;
@@ -174,6 +176,9 @@ class _SalesPageState extends State<SalesPage> {
                                 (itemData['name'] ?? 'Item').toString();
                             final double? price =
                                 (itemData['price'] as num?)?.toDouble();
+                            double discount =
+                                (itemData['discount'] as num?)?.toDouble() ??
+                                    0.0;
                             final String imagePath =
                                 itemData['image_url'] ?? '';
                             final bool outOfStock = qty < 1;
@@ -208,23 +213,6 @@ class _SalesPageState extends State<SalesPage> {
                                           crossAxisAlignment:
                                               CrossAxisAlignment.stretch,
                                           children: [
-                                            Expanded(
-                                              child: Hero(
-                                                tag:
-                                                    'sale-item-${itemData['id']}',
-                                                child: Image.file(
-                                                  File(imagePath),
-                                                  fit: BoxFit.cover,
-                                                  errorBuilder: (_, __, ___) =>
-                                                      const Center(
-                                                    child: Icon(
-                                                        Icons.broken_image,
-                                                        size: 48,
-                                                        color: Colors.grey),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
                                             Padding(
                                               padding:
                                                   const EdgeInsets.fromLTRB(
@@ -241,50 +229,126 @@ class _SalesPageState extends State<SalesPage> {
                                             Padding(
                                               padding:
                                                   const EdgeInsets.fromLTRB(
-                                                      10, 0, 10, 10),
-                                              child: Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
+                                                      10, 0, 10, 0),
+                                              child: Column(
                                                 children: [
-                                                  Text(
-                                                    'K ${price?.toStringAsFixed(2) ?? '--'}',
-                                                    style: TextStyle(
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: bluePrimary,
-                                                    ),
-                                                  ),
-                                                  Container(
-                                                    padding: const EdgeInsets
-                                                        .symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4),
-                                                    decoration: BoxDecoration(
-                                                      color: outOfStock
-                                                          ? Colors.red.shade50
-                                                          : Colors
-                                                              .green.shade50,
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                              12),
-                                                    ),
-                                                    child: Text(
-                                                      outOfStock
-                                                          ? 'Out'
-                                                          : 'Qty: $qty',
-                                                      style: TextStyle(
-                                                        fontSize: 11,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: outOfStock
-                                                            ? Colors.red
-                                                            : Colors
-                                                                .green.shade700,
+                                                  Row(
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .spaceBetween,
+                                                    children: [
+                                                      Text(
+                                                        'K ${price?.toStringAsFixed(2) ?? '--'}',
+                                                        style: TextStyle(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          color: bluePrimary,
+                                                        ),
                                                       ),
-                                                    ),
+                                                      Container(
+                                                        padding:
+                                                            const EdgeInsets
+                                                                .symmetric(
+                                                          horizontal: 8,
+                                                        ),
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: outOfStock
+                                                              ? Colors
+                                                                  .red.shade50
+                                                              : Colors.green
+                                                                  .shade50,
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(12),
+                                                        ),
+                                                        child: Text(
+                                                          outOfStock
+                                                              ? 'Out'
+                                                              : 'Qty: $qty',
+                                                          style: TextStyle(
+                                                            fontSize: 11,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color: outOfStock
+                                                                ? Colors.red
+                                                                : Colors.green
+                                                                    .shade700,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
+                                                  SizedBox(height: 6),
+                                                  if (discount > 0)
+                                                    Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .spaceBetween,
+                                                      children: [
+                                                        const SizedBox(),
+                                                        Container(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .symmetric(
+                                                                  horizontal:
+                                                                      8),
+                                                          decoration:
+                                                              BoxDecoration(
+                                                            color: Colors
+                                                                .orange.shade50,
+                                                            borderRadius:
+                                                                BorderRadius
+                                                                    .circular(
+                                                                        12),
+                                                          ),
+                                                          child: Text(
+                                                            'Discount: ${discount.toStringAsFixed(0)}%',
+                                                            style:
+                                                                const TextStyle(
+                                                              fontSize: 11,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
                                                 ],
+                                              ),
+                                            ),
+                                            Divider(),
+                                            Expanded(
+                                              child: Hero(
+                                                tag:
+                                                    'sale-item-${itemData['id']}',
+                                                child: isAndroid
+                                                    ? Image.file(
+                                                        File(imagePath),
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder:
+                                                            (_, __, ___) =>
+                                                                const Center(
+                                                          child: Icon(
+                                                              Icons
+                                                                  .broken_image,
+                                                              size: 48,
+                                                              color:
+                                                                  Colors.red),
+                                                        ),
+                                                      )
+                                                    : Image.asset(
+                                                        imagePath,
+                                                        fit: BoxFit.cover,
+                                                        errorBuilder:
+                                                            (_, __, ___) =>
+                                                                const Center(
+                                                          child: Icon(
+                                                              Icons
+                                                                  .broken_image,
+                                                              size: 48,
+                                                              color:
+                                                                  Colors.grey),
+                                                        ),
+                                                      ),
                                               ),
                                             ),
                                           ],

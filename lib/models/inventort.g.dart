@@ -20,7 +20,8 @@ class ItemAdapter extends TypeAdapter<Item> {
       name: fields[0] as String,
       price: fields[1] as double,
       quantity: fields[2] as int,
-      imageUrl: fields[3] as String,
+      discount: fields[3] as double,
+      imageUrl: fields[4] as String,
     );
   }
 
@@ -35,6 +36,8 @@ class ItemAdapter extends TypeAdapter<Item> {
       ..writeByte(2)
       ..write(obj.quantity)
       ..writeByte(3)
+      ..write(obj.discount)
+      ..writeByte(4)
       ..write(obj.imageUrl);
   }
 

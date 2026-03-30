@@ -23,6 +23,7 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
   final TextEditingController price = TextEditingController();
   final TextEditingController quantityController = TextEditingController();
   final TextEditingController imagePath = TextEditingController();
+  final TextEditingController discountController = TextEditingController();
   bool _saving = false;
   late dynamic id;
 
@@ -59,6 +60,7 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
     price.text = args['price']?.toString() ?? '';
     quantityController.text = args['quantity']?.toString() ?? '';
     imagePath.text = args['image_url']?.toString() ?? '';
+    discountController.text = args['discount']?.toString() ?? '';
   }
 
   Future<void> _submit() async {
@@ -69,6 +71,7 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
         name: itemName.text.trim(),
         price: double.parse(price.text.trim()),
         quantity: int.parse(quantityController.text.trim()),
+        discount: double.tryParse(discountController.text.trim()) ?? 0.0,
         imageUrl: imagePath.text.trim(),
       );
       await db.updateInventory(id, myItem);
@@ -167,6 +170,25 @@ class _EditInventoryPageState extends State<EditInventoryPage> {
                           final val = int.tryParse(v);
                           if (val == null) return 'Invalid number';
                           if (val < 0) return 'Must be positive';
+                          return null;
+                        },
+                      ),
+                       const SizedBox(height: 14),
+                      TextFormField(
+                        controller: discountController,
+                        decoration:
+                            _dec('Discount (%)', Icons.discount_outlined),
+                        keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(
+                              RegExp(r'^[0-9]*[.]?[0-9]{0,2}'))
+                        ],
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return null; // Optional
+                          final val = double.tryParse(v);
+                          if (val == null) return 'Invalid number';
+                          if (val < 0 || val > 100) return 'Must be 0-100';
                           return null;
                         },
                       ),

@@ -12,11 +12,16 @@ class CartController extends GetxController {
 
   void addToCart(Map<dynamic, dynamic> itemData, int stock) {
     final itemName = itemData["name"] as String?;
-    final itemPrice = (itemData["price"] as num?)?.toDouble();
+    final itemDiscount = (itemData["discount"] as num?)?.toDouble() ?? 0.0;
+    double? itemPrice = (itemData["price"] as num?)?.toDouble();
+
 
     if (itemName == null || itemPrice == null) {
       Get.snackbar('Error', 'Error adding item: Missing details.');
       return;
+    }
+    if (itemDiscount > 0){
+      itemPrice = itemPrice * (1 - itemDiscount / 100);
     }
 
     int index = cart.indexWhere((item) => item.name == itemName);

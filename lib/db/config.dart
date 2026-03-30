@@ -29,24 +29,23 @@ class Config extends GetxController {
       if (kIsWeb) {
         databaseFactory = databaseFactoryFfiWeb;
       }
-      final String path =
-          kIsWeb ? 'cash_app.db' : join(await getDatabasesPath(), 'cash_app.db');
-      _database = await openDatabase(
-        path,
-        version: 7,
-        onCreate: (db, version) async {
-          await db.execute(
-              'CREATE TABLE IF NOT EXISTS inventory (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, price REAL, quantity INTEGER, image_url TEXT)');
+      final String path = kIsWeb
+          ? 'cash_app.db'
+          : join(await getDatabasesPath(), 'cash_app.db');
+      _database =
+          await openDatabase(path, version: 8, onCreate: (db, version) async {
+        await db.execute(
+            'CREATE TABLE IF NOT EXISTS inventory (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, price REAL, discount REAL, quantity INTEGER, image_url TEXT)');
 
-          await db.execute(
-              'CREATE TABLE IF NOT EXISTS item_barcodes (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, barcode TEXT, FOREIGN KEY(item_id) REFERENCES inventory(id))');
-          await db.execute(
-              'CREATE TABLE IF NOT EXISTS sales_history (id INTEGER PRIMARY KEY AUTOINCREMENT, items_sold TEXT, transaction_type TEXT, date TEXT, amount REAL)');
-          await db.execute(
-              'CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, company_name TEXT, number_of_logins INTEGER, isDarkMode INTEGER, has_seen_tutorial INTEGER DEFAULT 0)');
+        await db.execute(
+            'CREATE TABLE IF NOT EXISTS item_barcodes (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, barcode TEXT, FOREIGN KEY(item_id) REFERENCES inventory(id))');
+        await db.execute(
+            'CREATE TABLE IF NOT EXISTS sales_history (id INTEGER PRIMARY KEY AUTOINCREMENT, items_sold TEXT, transaction_type TEXT, date TEXT, amount REAL)');
+        await db.execute(
+            'CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, company_name TEXT, number_of_logins INTEGER, isDarkMode INTEGER, has_seen_tutorial INTEGER DEFAULT 0)');
 
-          // New table for tracking individual items sold per sale
-          await db.execute('''
+        // New table for tracking individual items sold per sale
+        await db.execute('''
             CREATE TABLE IF NOT EXISTS sale_items (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
               sale_id INTEGER,
@@ -59,30 +58,29 @@ class Config extends GetxController {
             )
           ''');
 
-          await db.insert('users', {
-            'name': 'User',
-            'company_name': 'Company',
-            'number_of_logins': 0,
-            'isDarkMode': 0,
-            'has_seen_tutorial': 0
-          });
-        },
-        onUpgrade: (db, oldVersion, newVersion) async {
-          if (oldVersion < 5) {
-            final cols = await db.rawQuery('PRAGMA table_info(users)');
-            final hasCol = cols.any((c) => c['name'] == 'has_seen_tutorial');
-            if (!hasCol) {
-              await db.execute(
-                  'ALTER TABLE users ADD COLUMN has_seen_tutorial INTEGER DEFAULT 0');
-            }
-          }
-          if (oldVersion < 6) {
+        await db.insert('users', {
+          'name': 'User',
+          'company_name': 'Company',
+          'number_of_logins': 0,
+          'isDarkMode': 0,
+          'has_seen_tutorial': 0
+        });
+      }, onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 5) {
+          final cols = await db.rawQuery('PRAGMA table_info(users)');
+          final hasCol = cols.any((c) => c['name'] == 'has_seen_tutorial');
+          if (!hasCol) {
             await db.execute(
-                'CREATE TABLE IF NOT EXISTS item_barcodes (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, barcode TEXT, FOREIGN KEY(item_id) REFERENCES inventory(id))');
+                'ALTER TABLE users ADD COLUMN has_seen_tutorial INTEGER DEFAULT 0');
           }
-          if (oldVersion < 7) {
-            // Add sale_items table for tracking individual items sold
-            await db.execute('''
+        }
+        if (oldVersion < 6) {
+          await db.execute(
+              'CREATE TABLE IF NOT EXISTS item_barcodes (id INTEGER PRIMARY KEY AUTOINCREMENT, item_id INTEGER, barcode TEXT, FOREIGN KEY(item_id) REFERENCES inventory(id))');
+        }
+        if (oldVersion < 7) {
+          // Add sale_items table for tracking individual items sold
+          await db.execute('''
               CREATE TABLE IF NOT EXISTS sale_items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 sale_id INTEGER,
@@ -94,9 +92,16 @@ class Config extends GetxController {
                 FOREIGN KEY(sale_id) REFERENCES sales_history(id)
               )
             ''');
+        }
+        if (oldVersion < 8) {
+          final cols = await db.rawQuery('PRAGMA table_info(inventory)');
+          final hasCol = cols.any((c) => c['name'] == 'discount');
+          if (!hasCol) {
+            await db.execute(
+                'ALTER TABLE inventory ADD COLUMN discount REAL DEFAULT 0');
           }
-        },
-      );
+        }
+      });
       // Ensure at least one user row exists
       final count = Sqflite.firstIntValue(
               await _database!.rawQuery('SELECT COUNT(*) FROM users')) ??
@@ -250,6 +255,47 @@ class Config extends GetxController {
     }
   }
 
+  Future<Map<String, dynamic>> getBusinessProfile() async {
+    try {
+      final db = await _ensureDb();
+      if (db == null) {
+        return {
+          'name': 'User',
+          'company_name': 'CashMate Business',
+        };
+      }
+
+      final rows = await db.query(
+        'users',
+        columns: ['name', 'company_name'],
+        limit: 1,
+      );
+
+      if (rows.isEmpty) {
+        return {
+          'name': 'User',
+          'company_name': 'CashMate Business',
+        };
+      }
+
+      final row = rows.first;
+      return {
+        'name': row['name']?.toString().trim().isNotEmpty == true
+            ? row['name']
+            : 'User',
+        'company_name':
+            row['company_name']?.toString().trim().isNotEmpty == true
+                ? row['company_name']
+                : 'CashMate Business',
+      };
+    } catch (_) {
+      return {
+        'name': 'User',
+        'company_name': 'CashMate Business',
+      };
+    }
+  }
+
   Future<void> addSale(SalesModel item) async {
     List<CartItem> itemsSold = item.itemsSold!;
     Map<int, dynamic> itemMap = {};
@@ -311,8 +357,20 @@ class Config extends GetxController {
     try {
       final db = await _ensureDb();
       if (db == null) return null;
-      List<Map<String, dynamic>> query =
-          await db.rawQuery('SELECT * FROM sales_history');
+      List<Map<String, dynamic>> query = await db.rawQuery('''
+        SELECT
+          s.*,
+          COALESCE(
+            (SELECT COUNT(*) FROM sale_items si WHERE si.sale_id = s.id),
+            0
+          ) AS line_item_count,
+          COALESCE(
+            (SELECT SUM(si.quantity) FROM sale_items si WHERE si.sale_id = s.id),
+            0
+          ) AS item_count
+        FROM sales_history s
+        ORDER BY datetime(s.date) DESC, s.id DESC
+      ''');
       return query;
     } catch (e) {
       Get.snackbar('Error', 'Failed to fetch sales history: ${e.toString()}');
@@ -369,6 +427,7 @@ class Config extends GetxController {
         'name': item.name,
         'price': item.price,
         'quantity': item.quantity,
+        'discount': item.discount,
         'image_url': item.imageUrl,
       };
       await db.update(
@@ -843,6 +902,33 @@ class Config extends GetxController {
         ORDER BY s.date DESC
         LIMIT ?
       ''', [limit]);
+
+      return results;
+    } catch (e) {
+      return [];
+    }
+  }
+
+  /// Get sales rows for CSV export with one row per sold item
+  Future<List<Map<String, dynamic>>> getSalesExportRows() async {
+    try {
+      final db = await _ensureDb();
+      if (db == null) return [];
+
+      final results = await db.rawQuery('''
+        SELECT
+          s.id as sale_id,
+          s.date as sale_date,
+          s.transaction_type,
+          s.amount as sale_total,
+          si.item_name,
+          si.quantity as quantity_sold,
+          si.item_price as unit_price,
+          si.subtotal as line_total
+        FROM sales_history s
+        LEFT JOIN sale_items si ON s.id = si.sale_id
+        ORDER BY s.date DESC, si.id ASC
+      ''');
 
       return results;
     } catch (e) {
